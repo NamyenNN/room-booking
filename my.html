@@ -1,0 +1,40 @@
+<!doctype html><html lang="th"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>การจองของฉัน</title>
+<style>body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:780px;margin:auto}.card{border:1px solid #ddd;border-radius:10px;padding:12px;margin-bottom:12px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}button{padding:10px 12px;border:1px solid #aaa;border-radius:8px;background:#fff;cursor:pointer}button.danger{border-color:#b00020;color:#b00020}.muted{color:#666;font-size:12px}</style>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head><body>
+<h1>การจองของฉัน</h1>
+<div id="list"></div>
+<p class="muted">หมายเหตุ: ยกเลิกได้เฉพาะการจองที่คุณเป็นผู้จอง</p>
+<script>
+// TODO: วางค่าของคุณ
+const API = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL';
+const LIFF_ID = 'PASTE_YOUR_LIFF_ID';
+
+let lineUserId='';
+async function api(path,opt={}){ const r=await fetch(API+path,opt); return r.json(); }
+async function loadMy(){
+  const data=await api(`?action=my_bookings&line_user=${encodeURIComponent(lineUserId)}`);
+  const list=document.getElementById('list'); list.innerHTML='';
+  (data.items||[]).forEach(it=>{
+    const el=document.createElement('div'); el.className='card';
+    el.innerHTML=`
+      <div class="row"><div><b>ห้อง</b><br>${it.room_id}</div><div><b>วันเวลา</b><br>${it.date} ${it.start}-${it.end}</div></div>
+      <div style="margin-top:8px"><b>Ref</b>: ${it.ref}</div>
+      ${it.purpose?`<div class="muted" style="margin-top:8px">วัตถุประสงค์: ${it.purpose}</div>`:''}
+      <div style="margin-top:12px"><button class="danger" data-ref="${it.ref}">ยกเลิกการจองนี้</button></div>`;
+    list.appendChild(el);
+  });
+  document.querySelectorAll('button.danger').forEach(btn=>{
+    btn.onclick=async ()=>{
+      if(!confirm('ยืนยันยกเลิกการจอง Ref: '+btn.dataset.ref+' ?')) return;
+      const res=await api('',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'cancel',ref:btn.dataset.ref,line_user:lineUserId})});
+      alert(res.ok?'ยกเลิกสำเร็จ':('ไม่สำเร็จ: '+(res.reason||res.error)));
+      if(res.ok) loadMy();
+    };
+  });
+}
+(async ()=>{ await liff.init({liffId:LIFF_ID}); if(!liff.isLoggedIn()) liff.login(); const prof=await liff.getProfile(); lineUserId=prof.userId; await loadMy(); })();
+</script>
+</body></html>
