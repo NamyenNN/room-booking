@@ -14,7 +14,7 @@
 <table id="tbl" style="display:none"><thead><tr><th>วันที่</th><th>ห้อง</th><th>เวลา</th><th>ผู้จอง</th><th>วัตถุประสงค์</th><th>Ref</th></tr></thead><tbody></tbody></table>
 <script>
 // TODO: วางค่าของคุณ
-const API = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL';
+const API = 'https://script.google.com/macros/s/AKfycbzX3qDwakFm0-Fls1O4_fDuiZMauPzGeuuhB-7HRPcw/exec';
 
 async function api(path){ const r=await fetch(API+path); return r.json(); }
 async function loadRooms(){ const r=await api('?action=rooms'); const sel=room; sel.innerHTML=''; const optAll=document.createElement('option'); optAll.value=''; optAll.textContent='ทุกห้อง'; sel.appendChild(optAll); (r.rooms||[]).forEach(x=>{ const o=document.createElement('option'); o.value=x.room_id; o.textContent=x.room_name||x.room_id; sel.appendChild(o); }); }
