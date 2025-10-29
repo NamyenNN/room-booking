@@ -54,14 +54,26 @@
     if(!r.ok) throw new Error('HTTP '+r.status);
     return r.json();
   }
-
   function toPill(t,bad=false){
     const el=document.createElement('span');
     el.className='pill'+(bad?' bad':'');
     el.textContent=t; return el;
   }
 
-  // โหลดรายชื่อห้อง (ไม่พึ่ง LIFF)
+  // --- บังคับให้ล็อกอินก่อนเสมอ ---
+  async function initLIFFRequire(){
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()){
+      // กลับมาหน้าเดิมหลังล็อกอิน
+      liff.login({ redirectUri: location.href });
+      return; // โค้ดจะหยุดตรงนี้เพราะถูก redirect ออกไป
+    }
+    // เข้าสู่ระบบแล้ว → เอาโปรไฟล์
+    const p = await liff.getProfile();
+    lineUserId = p.userId || '';
+    if(!by.value) by.value = p.displayName || '';
+  }
+
   async function loadRooms(){
     const sel = document.getElementById('room');
     const slots = document.getElementById('slots');
@@ -87,21 +99,6 @@
     }
   }
 
-  // LIFF แบบ optional (ไม่บังคับ login เมื่อนอก LINE)
-  async function initLIFF(){
-    try{
-      await liff.init({ liffId: LIFF_ID });
-      if (liff.isLoggedIn()){
-        const p = await liff.getProfile();
-        lineUserId = p.userId || '';
-        const by = document.getElementById('by');
-        if(by && !by.value) by.value = p.displayName || '';
-      }
-    }catch(e){
-      console.warn('LIFF skipped:', e);
-    }
-  }
-
   async function checkSlots(){
     const r = document.getElementById('room').value;
     const dt = document.getElementById('date').value;
@@ -110,7 +107,7 @@
     const slots = document.getElementById('slots');
     slots.innerHTML='';
     if(d.booked && d.booked.length){
-      slots.append('ช่วงที่ถูกจองแล้ว: ');
+      slots.append('ช่วงเวลาที่ถูกจองแล้ว: ');
       d.booked.forEach(b=>slots.appendChild(toPill(`${b.start}-${b.end} (${b.by||'-'})`,true)));
     }else{
       slots.textContent='วันนี้ยังว่างทั้งหมด ✅';
@@ -150,14 +147,13 @@
     }
   }
 
-  // รันหลัง DOM พร้อม: โหลดห้องก่อน แล้วค่อย init LIFF
+  // ลำดับ: (1) บังคับล็อกอิน → (2) โหลดห้อง → (3) ผูกปุ่ม
   document.addEventListener('DOMContentLoaded', async ()=>{
-    await loadRooms();
-    const date = document.getElementById('date');
-    if (date) date.value = new Date().toISOString().slice(0,10);
+    await initLIFFRequire();                // ต้องผ่านตรงนี้ก่อน (ถ้ายังไม่ login จะ redirect ไป LINE)
+    await loadRooms();                      // กลับมาจาก LINE แล้วจึงโหลดห้อง
+    document.getElementById('date').value = new Date().toISOString().slice(0,10);
     document.getElementById('check').onclick = checkSlots;
     document.getElementById('book').onclick = book;
-    await initLIFF();
   });
 </script>
 </body>
