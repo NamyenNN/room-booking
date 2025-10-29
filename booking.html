@@ -1,38 +1,164 @@
-<!doctype html><html lang="th"><head>
+<!doctype html>
+<html lang="th">
+<head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>จองห้องประชุม</title>
-<style>body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:720px;margin:auto}fieldset{border:1px solid #ddd;padding:12px;margin-bottom:16px;border-radius:8px}label{display:block;margin:8px 0 4px}input,select,button,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pill{display:inline-block;padding:4px 8px;border:1px solid #ccc;border-radius:999px;margin:4px 6px 0 0}.bad{color:#b00020}.hint{font-size:12px;color:#666}</style>
+<style>
+  body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:720px;margin:auto}
+  fieldset{border:1px solid #ddd;padding:12px;margin-bottom:16px;border-radius:8px}
+  label{display:block;margin:8px 0 4px}
+  input,select,button,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .pill{display:inline-block;padding:4px 8px;border:1px solid #ccc;border-radius:999px;margin:4px 6px 0 0}
+  .bad{color:#b00020}
+  .hint{font-size:12px;color:#666}
+</style>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-</head><body>
+</head>
+<body>
 <h1>จองห้องประชุม</h1>
+
 <fieldset><legend>เลือกห้องและวันเวลา</legend>
-<label>ห้อง</label><select id="room"></select>
-<div class="row"><div><label>วันที่</label><input type="date" id="date"></div><div><label>เวลาเริ่ม</label><input type="time" id="start" value="09:00"></div></div>
-<div class="row"><div><label>เวลาสิ้นสุด</label><input type="time" id="end" value="10:00"></div><div><label>&nbsp;</label><button id="check">เช็กคิว</button></div></div>
-<div id="slots"></div>
+  <label>ห้อง</label>
+  <select id="room"><option value="">(กำลังโหลด...)</option></select>
+  <div class="row">
+    <div><label>วันที่</label><input type="date" id="date"></div>
+    <div><label>เวลาเริ่ม</label><input type="time" id="start" value="09:00"></div>
+  </div>
+  <div class="row">
+    <div><label>เวลาสิ้นสุด</label><input type="time" id="end" value="10:00"></div>
+    <div><label>&nbsp;</label><button id="check">เช็กคิว</button></div>
+  </div>
+  <div id="slots"></div>
 </fieldset>
+
 <fieldset><legend>ข้อมูลผู้จอง</legend>
-<label>ชื่อผู้จอง</label><input id="by" placeholder="จะเติมจาก LINE ให้อัตโนมัติ">
-<label>วัตถุประสงค์</label><textarea id="purpose" rows="2" placeholder="เช่น ประชุมโครงการ..."></textarea>
+  <label>ชื่อผู้จอง</label><input id="by" placeholder="จะเติมจาก LINE ให้อัตโนมัติ">
+  <label>วัตถุประสงค์</label><textarea id="purpose" rows="2" placeholder="เช่น ประชุมโครงการ..."></textarea>
 </fieldset>
+
 <button id="book">ยืนยันการจอง</button>
 <p id="msg" class="hint"></p>
 <p><a href="my.html">ไปที่ “การจองของฉัน / ยกเลิก”</a></p>
 
 <script>
-// TODO: วางค่าของคุณ
-const API = 'https://script.google.com/macros/s/AKfycbzX3qDwakFm0-Fls1O4_fDuiZMauPzGeuuhB-7HRPcw/exec';
-const LIFF_ID = '2008386695-b1ykgdPk';
+  // ===== ตั้งค่าของคุณ =====
+  const API = 'https://script.google.com/macros/s/AKfycbzX3qDwakFm0-Fls1O4_fDuiZMauPzGeuuhB-7HRPcw/exec'; // ใช้ /exec
+  const LIFF_ID = '2008386695-b1ykgdPk';
+  // =========================
 
-let lineUserId='';
-async function api(path,opt={}){ const r=await fetch(API+path,opt); return r.json(); }
-function toPill(t,bad=false){ const el=document.createElement('span'); el.className='pill'+(bad?' bad':''); el.textContent=t; return el; }
-async function initLIFF(){ await liff.init({liffId:LIFF_ID}); if(!liff.isLoggedIn()) liff.login(); const p=await liff.getProfile(); lineUserId=p.userId; if(!by.value) by.value=p.displayName||''; }
-async function loadRooms(){ const d=await api('?action=rooms'); d.rooms?.forEach(r=>{ const o=document.createElement('option'); o.value=r.room_id; o.textContent=r.room_name||r.room_id; room.appendChild(o); }); }
-async function checkSlots(){ const r=room.value, dt=date.value; if(!r||!dt){alert('กรุณาเลือกห้องและวันที่');return;} const d=await api(`?action=slots&room_id=${encodeURIComponent(r)}&date=${encodeURIComponent(dt)}`); slots.innerHTML=''; if(d.booked?.length){ slots.append('ช่วงเวลาที่ถูกจองแล้ว: '); d.booked.forEach(b=>slots.appendChild(toPill(`${b.start}-${b.end} (${b.by||'-'})`,true))); } else { slots.textContent='วันนี้ยังว่างทั้งหมด ✅'; } }
-async function book(){ const payload={ room_id:room.value, date:date.value, start:start.value, end:end.value, book_by:by.value, purpose:purpose.value, line_user:lineUserId }; if(!payload.line_user){ msg.textContent='❌ ต้องเปิดผ่าน LINE (LIFF)'; return; } msg.textContent='กำลังบันทึก...'; const res=await api('',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); msg.textContent=res.ok?`จองสำเร็จ! Ref: ${res.ref}`:`❌ ไม่สำเร็จ: ${res.reason||res.error}`; if(res.ok) checkSlots(); }
-const room=document.getElementById('room'), date=document.getElementById('date'), start=document.getElementById('start'), end=document.getElementById('end'), by=document.getElementById('by'), purpose=document.getElementById('purpose'), slots=document.getElementById('slots'), msg=document.getElementById('msg');
-document.getElementById('check').onclick=checkSlots; document.getElementById('book').onclick=book;
-(async ()=>{ await initLIFF(); await loadRooms(); date.value=new Date().toISOString().slice(0,10); })();
+  let lineUserId = '';
+
+  async function api(path,opt={}) {
+    const r = await fetch(API + path, opt);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json();
+  }
+
+  function toPill(t,bad=false){
+    const el=document.createElement('span');
+    el.className='pill'+(bad?' bad':'');
+    el.textContent=t; return el;
+  }
+
+  // โหลดรายชื่อห้อง (ไม่พึ่ง LIFF)
+  async function loadRooms(){
+    const sel = document.getElementById('room');
+    const slots = document.getElementById('slots');
+    try{
+      const d = await api('?action=rooms');
+      if(!d.ok) throw new Error(d.error||'API not ok');
+      const rooms = d.rooms || [];
+      if(rooms.length===0){
+        sel.innerHTML = '<option value="">(ยังไม่มีห้องในชีต Rooms แถว 2)</option>';
+        slots.textContent = 'กรอก A:room_id, B:room_name, C:capacity, D:note ตั้งแต่แถวที่ 2';
+        return;
+      }
+      sel.innerHTML = '';
+      rooms.forEach(r=>{
+        const o=document.createElement('option');
+        o.value = r.room_id;
+        o.textContent = r.room_name || r.room_id;
+        sel.appendChild(o);
+      });
+    }catch(e){
+      sel.innerHTML = '<option value="">(โหลดห้องไม่สำเร็จ)</option>';
+      slots.textContent = '❌ โหลดห้องไม่สำเร็จ: ' + e.message;
+    }
+  }
+
+  // LIFF แบบ optional (ไม่บังคับ login เมื่อนอก LINE)
+  async function initLIFF(){
+    try{
+      await liff.init({ liffId: LIFF_ID });
+      if (liff.isLoggedIn()){
+        const p = await liff.getProfile();
+        lineUserId = p.userId || '';
+        const by = document.getElementById('by');
+        if(by && !by.value) by.value = p.displayName || '';
+      }
+    }catch(e){
+      console.warn('LIFF skipped:', e);
+    }
+  }
+
+  async function checkSlots(){
+    const r = document.getElementById('room').value;
+    const dt = document.getElementById('date').value;
+    if(!r||!dt){ alert('กรุณาเลือกห้องและวันที่'); return; }
+    const d = await api(`?action=slots&room_id=${encodeURIComponent(r)}&date=${encodeURIComponent(dt)}`);
+    const slots = document.getElementById('slots');
+    slots.innerHTML='';
+    if(d.booked && d.booked.length){
+      slots.append('ช่วงที่ถูกจองแล้ว: ');
+      d.booked.forEach(b=>slots.appendChild(toPill(`${b.start}-${b.end} (${b.by||'-'})`,true)));
+    }else{
+      slots.textContent='วันนี้ยังว่างทั้งหมด ✅';
+    }
+  }
+
+  async function book(){
+    const payload = {
+      room_id: document.getElementById('room').value,
+      date:    document.getElementById('date').value,
+      start:   document.getElementById('start').value,
+      end:     document.getElementById('end').value,
+      book_by: document.getElementById('by').value,
+      purpose: document.getElementById('purpose').value,
+      line_user: lineUserId
+    };
+    const msg = document.getElementById('msg');
+
+    if(!payload.room_id || !payload.date || !payload.start || !payload.end){
+      msg.textContent='❌ กรุณากรอกข้อมูลให้ครบ'; return;
+    }
+    if(!payload.line_user){
+      msg.textContent='❌ ต้องเปิดผ่าน LINE (LIFF) เพื่อยืนยันตัวตนผู้จอง'; return;
+    }
+
+    msg.textContent='กำลังบันทึก...';
+    try{
+      const res = await api('', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      msg.textContent = res.ok ? `จองสำเร็จ! Ref: ${res.ref}` : `❌ ไม่สำเร็จ: ${res.reason||res.error}`;
+      if(res.ok) checkSlots();
+    }catch(e){
+      msg.textContent = '❌ ไม่สำเร็จ: ' + e.message;
+    }
+  }
+
+  // รันหลัง DOM พร้อม: โหลดห้องก่อน แล้วค่อย init LIFF
+  document.addEventListener('DOMContentLoaded', async ()=>{
+    await loadRooms();
+    const date = document.getElementById('date');
+    if (date) date.value = new Date().toISOString().slice(0,10);
+    document.getElementById('check').onclick = checkSlots;
+    document.getElementById('book').onclick = book;
+    await initLIFF();
+  });
 </script>
-</body></html>
+</body>
+</html>
