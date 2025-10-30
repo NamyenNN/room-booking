@@ -12,6 +12,8 @@
   .pill{display:inline-block;padding:4px 8px;border:1px solid #ccc;border-radius:999px;margin:4px 6px 0 0}
   .bad{color:#b00020}
   .hint{font-size:12px;color:#666}
+  details{margin-top:14px}
+  pre{white-space:pre-wrap}
 </style>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
@@ -41,42 +43,65 @@
 <p id="msg" class="hint"></p>
 <p><a href="my.html">ไปที่ “การจองของฉัน / ยกเลิก”</a></p>
 
+<details><summary>DEBUG</summary><pre id="debug"></pre></details>
+
 <script>
   // ===== ตั้งค่าของคุณ =====
-  const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec'; // ใช้ /exec
+  // ใช้ URL /exec ของ Apps Script (ห้ามมี ?action ติดในตัวแปรนี้)
+  const API = 'https://script.google.com/macros/s/AKfycbzX3qDwakFm0-Fls1O4_fDuiZMauPzGeuuhB-7HRPcw/exec';
   const LIFF_ID = '2008386695-b1ykgdPk';
   // =========================
 
   let lineUserId = '';
+  const $ = (id)=>document.getElementById(id);
+  const log = (t)=>{ const el=$('debug'); if(el) el.textContent += t+'\n'; };
 
-  async function api(path,opt={}) {
-    const r = await fetch(API + path, opt);
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    return r.json();
+  // เรียก API พร้อมกันแคช + โชว์สาเหตุเมื่อพลาด
+  async function api(path, opt={}) {
+    const url = API + path + (path.includes('?') ? '&' : '?') + 'v=' + Date.now();
+    log('API: '+url);
+    try{
+      const res = await fetch(url, {
+        method: opt.method || 'GET',
+        headers: opt.headers || {'Accept':'application/json'},
+        body: opt.body || undefined,
+        mode: 'cors', credentials: 'omit', cache: 'no-store',
+        redirect: 'follow', referrerPolicy: 'no-referrer'
+      });
+      const raw = await res.text().catch(()=> '');
+      log('HTTP: '+res.status+' RAW: '+raw.slice(0,120));
+      if(!res.ok) throw new Error('HTTP '+res.status+' '+raw.slice(0,200));
+      try { return JSON.parse(raw); } catch { throw new Error('BAD JSON: '+raw.slice(0,200)); }
+    }catch(e){
+      if ($('slots')) {
+        $('slots').innerHTML = '<pre>❌ API failed\nURL: '+url+'\nReason: '+String(e)+'</pre>';
+      }
+      throw e;
+    }
   }
+
   function toPill(t,bad=false){
     const el=document.createElement('span');
-    el.className='pill'+(bad?' bad':'');
-    el.textContent=t; return el;
+    el.className='pill'+(bad?' bad':''); el.textContent=t; return el;
   }
 
-  // --- บังคับให้ล็อกอินก่อนเสมอ ---
+  // --- บังคับล็อกอินก่อนเสมอ ---
   async function initLIFFRequire(){
     await liff.init({ liffId: LIFF_ID });
-    if (!liff.isLoggedIn()){
+    if (!liff.isLoggedIn()) {
       // กลับมาหน้าเดิมหลังล็อกอิน
       liff.login({ redirectUri: location.href });
-      return; // โค้ดจะหยุดตรงนี้เพราะถูก redirect ออกไป
+      return; // จะ redirect ออกไป
     }
-    // เข้าสู่ระบบแล้ว → เอาโปรไฟล์
     const p = await liff.getProfile();
     lineUserId = p.userId || '';
-    if(!by.value) by.value = p.displayName || '';
+    if (!$('by').value) $('by').value = p.displayName || '';
+    log('LIFF OK user='+lineUserId);
   }
 
+  // --- โหลดรายชื่อห้อง (เรียกหลังจากล็อกอินแล้ว) ---
   async function loadRooms(){
-    const sel = document.getElementById('room');
-    const slots = document.getElementById('slots');
+    const sel = $('room'); const slots = $('slots');
     try{
       const d = await api('?action=rooms');
       if(!d.ok) throw new Error(d.error||'API not ok');
@@ -89,50 +114,43 @@
       sel.innerHTML = '';
       rooms.forEach(r=>{
         const o=document.createElement('option');
-        o.value = r.room_id;
-        o.textContent = r.room_name || r.room_id;
+        o.value=r.room_id; o.textContent=r.room_name||r.room_id;
         sel.appendChild(o);
       });
+      log('rooms.length='+rooms.length);
     }catch(e){
       sel.innerHTML = '<option value="">(โหลดห้องไม่สำเร็จ)</option>';
-      slots.textContent = '❌ โหลดห้องไม่สำเร็จ: ' + e.message;
+      slots.innerHTML = '<pre>❌ โหลดห้องไม่สำเร็จ\nสาเหตุ: '+String(e)+'\nAPI: '+API+'\nหน้าปัจจุบัน: '+location.href+'</pre>';
     }
   }
 
   async function checkSlots(){
-    const r = document.getElementById('room').value;
-    const dt = document.getElementById('date').value;
+    const r = $('room').value, dt = $('date').value;
     if(!r||!dt){ alert('กรุณาเลือกห้องและวันที่'); return; }
     const d = await api(`?action=slots&room_id=${encodeURIComponent(r)}&date=${encodeURIComponent(dt)}`);
-    const slots = document.getElementById('slots');
-    slots.innerHTML='';
+    const box = $('slots'); box.innerHTML='';
     if(d.booked && d.booked.length){
-      slots.append('ช่วงเวลาที่ถูกจองแล้ว: ');
-      d.booked.forEach(b=>slots.appendChild(toPill(`${b.start}-${b.end} (${b.by||'-'})`,true)));
+      box.append('ช่วงเวลาที่ถูกจองแล้ว: ');
+      d.booked.forEach(b=>box.appendChild(toPill(`${b.start}-${b.end} (${b.by||'-'})`,true)));
     }else{
-      slots.textContent='วันนี้ยังว่างทั้งหมด ✅';
+      box.textContent='วันนี้ยังว่างทั้งหมด ✅';
     }
   }
 
   async function book(){
     const payload = {
-      room_id: document.getElementById('room').value,
-      date:    document.getElementById('date').value,
-      start:   document.getElementById('start').value,
-      end:     document.getElementById('end').value,
-      book_by: document.getElementById('by').value,
-      purpose: document.getElementById('purpose').value,
+      room_id: $('room').value, date: $('date').value,
+      start: $('start').value, end: $('end').value,
+      book_by: $('by').value,  purpose: $('purpose').value,
       line_user: lineUserId
     };
-    const msg = document.getElementById('msg');
-
-    if(!payload.room_id || !payload.date || !payload.start || !payload.end){
+    const msg = $('msg');
+    if(!payload.room_id||!payload.date||!payload.start||!payload.end){
       msg.textContent='❌ กรุณากรอกข้อมูลให้ครบ'; return;
     }
     if(!payload.line_user){
       msg.textContent='❌ ต้องเปิดผ่าน LINE (LIFF) เพื่อยืนยันตัวตนผู้จอง'; return;
     }
-
     msg.textContent='กำลังบันทึก...';
     try{
       const res = await api('', {
@@ -143,17 +161,18 @@
       msg.textContent = res.ok ? `จองสำเร็จ! Ref: ${res.ref}` : `❌ ไม่สำเร็จ: ${res.reason||res.error}`;
       if(res.ok) checkSlots();
     }catch(e){
-      msg.textContent = '❌ ไม่สำเร็จ: ' + e.message;
+      msg.textContent = '❌ ไม่สำเร็จ: ' + String(e);
     }
   }
 
-  // ลำดับ: (1) บังคับล็อกอิน → (2) โหลดห้อง → (3) ผูกปุ่ม
+  // ลำดับทำงาน: login → rooms → set date & bind buttons
   document.addEventListener('DOMContentLoaded', async ()=>{
-    await initLIFFRequire();                // ต้องผ่านตรงนี้ก่อน (ถ้ายังไม่ login จะ redirect ไป LINE)
-    await loadRooms();                      // กลับมาจาก LINE แล้วจึงโหลดห้อง
-    document.getElementById('date').value = new Date().toISOString().slice(0,10);
-    document.getElementById('check').onclick = checkSlots;
-    document.getElementById('book').onclick = book;
+    await initLIFFRequire();               // 1) บังคับล็อกอินก่อน (จะ redirect ถ้ายังไม่ได้ล็อกอิน)
+    await loadRooms();                     // 2) กลับมาแล้วค่อยโหลดห้อง
+    $('date').value = new Date().toISOString().slice(0,10);
+    $('check').onclick = checkSlots;
+    $('book').onclick  = book;
+    log('READY');
   });
 </script>
 </body>
