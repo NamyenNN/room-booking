@@ -47,7 +47,7 @@
 
 <script>
   // ===== ตั้งค่าของคุณ =====
-  // ใช้ URL /exec ของ Apps Script (ห้ามมี ?action ติดในตัวแปรนี้)
+  // ใช้ URL /exec ของ Apps Script (ตัวที่ GET ห้องได้จริง)
   const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
   const LIFF_ID = '2008386695-b1ykgdPk';
   // =========================
@@ -158,9 +158,14 @@
     }
   }
 
-  // ลำดับทำงาน: login → rooms → set date & bind buttons
+  // ลำดับทำงาน: login → (ถ้ามี redirect=my ให้พาไป my.html) → rooms → bind
   document.addEventListener('DOMContentLoaded', async ()=>{
-    await initLIFFRequire();               // 1) บังคับล็อกอินก่อน (จะ redirect ถ้ายังไม่ได้ล็อกอิน)
+    await initLIFFRequire();               // 1) บังคับล็อกอินก่อน
+    const qp = new URLSearchParams(location.search);
+    if (qp.get('redirect') === 'my') {
+      location.replace('my.html');
+      return;
+    }
     await loadRooms();                     // 2) กลับมาแล้วค่อยโหลดห้อง
     $('date').value = new Date().toISOString().slice(0,10);
     $('check').onclick = checkSlots;
