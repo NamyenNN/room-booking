@@ -56,28 +56,21 @@
   const $ = (id)=>document.getElementById(id);
   const log = (t)=>{ const el=$('debug'); if(el) el.textContent += t+'\n'; };
 
-  // เรียก API พร้อมกันแคช + โชว์สาเหตุเมื่อพลาด
-  async function api(path, opt={}) {
+  // เรียก API (กันแคช / ไม่ตั้ง header JSON ตอน POST เพื่อเลี่ยง preflight)
+  async function api(path, opt = {}) {
     const url = API + path + (path.includes('?') ? '&' : '?') + 'v=' + Date.now();
-    log('API: '+url);
-    try{
-      const res = await fetch(url, {
-        method: opt.method || 'GET',
-        headers: opt.headers || {'Accept':'application/json'},
-        body: opt.body || undefined,
-        mode: 'cors', credentials: 'omit', cache: 'no-store',
-        redirect: 'follow', referrerPolicy: 'no-referrer'
-      });
-      const raw = await res.text().catch(()=> '');
-      log('HTTP: '+res.status+' RAW: '+raw.slice(0,120));
-      if(!res.ok) throw new Error('HTTP '+res.status+' '+raw.slice(0,200));
-      try { return JSON.parse(raw); } catch { throw new Error('BAD JSON: '+raw.slice(0,200)); }
-    }catch(e){
-      if ($('slots')) {
-        $('slots').innerHTML = '<pre>❌ API failed\nURL: '+url+'\nReason: '+String(e)+'</pre>';
-      }
-      throw e;
-    }
+    log('API: '+url+' method='+(opt.method||'GET'));
+    const res = await fetch(url, {
+      method: opt.method || 'GET',
+      // สำคัญ: ไม่ใส่ headers Content-Type เองตอน POST
+      body: opt.body || undefined,
+      mode: 'cors', credentials: 'omit', cache: 'no-store',
+      redirect: 'follow', referrerPolicy: 'no-referrer'
+    });
+    const raw = await res.text().catch(()=> '');
+    log('HTTP: '+res.status+' RAW: '+raw.slice(0,120));
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + raw.slice(0,200));
+    try { return JSON.parse(raw); } catch { throw new Error('BAD JSON: '+raw.slice(0,200)); }
   }
 
   function toPill(t,bad=false){
@@ -89,8 +82,7 @@
   async function initLIFFRequire(){
     await liff.init({ liffId: LIFF_ID });
     if (!liff.isLoggedIn()) {
-      // กลับมาหน้าเดิมหลังล็อกอิน
-      liff.login({ redirectUri: location.href });
+      liff.login({ redirectUri: location.href });  // กลับมาหน้าเดิมหลังล็อกอิน
       return; // จะ redirect ออกไป
     }
     const p = await liff.getProfile();
@@ -120,7 +112,7 @@
       log('rooms.length='+rooms.length);
     }catch(e){
       sel.innerHTML = '<option value="">(โหลดห้องไม่สำเร็จ)</option>';
-      slots.innerHTML = '<pre>❌ โหลดห้องไม่สำเร็จ\nสาเหตุ: '+String(e)+'\nAPI: '+API+'\nหน้าปัจจุบัน: '+location.href+'</pre>';
+      $('slots').innerHTML = '<pre>❌ โหลดห้องไม่สำเร็จ\nสาเหตุ: '+String(e)+'\nAPI: '+API+'\nหน้าปัจจุบัน: '+location.href+'</pre>';
     }
   }
 
@@ -137,6 +129,7 @@
     }
   }
 
+  // --- ส่งจองแบบ form-urlencoded (เลี่ยง preflight) ---
   async function book(){
     const payload = {
       room_id: $('room').value, date: $('date').value,
@@ -145,19 +138,19 @@
       line_user: lineUserId
     };
     const msg = $('msg');
+
     if(!payload.room_id||!payload.date||!payload.start||!payload.end){
       msg.textContent='❌ กรุณากรอกข้อมูลให้ครบ'; return;
     }
     if(!payload.line_user){
       msg.textContent='❌ ต้องเปิดผ่าน LINE (LIFF) เพื่อยืนยันตัวตนผู้จอง'; return;
     }
+
     msg.textContent='กำลังบันทึก...';
     try{
-      const res = await api('', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(payload)
-      });
+      const form = new URLSearchParams();
+      form.set('payload', JSON.stringify(payload)); // ใส่ข้อมูลในช่อง payload
+      const res = await api('', { method:'POST', body: form }); // ไม่มี headers JSON
       msg.textContent = res.ok ? `จองสำเร็จ! Ref: ${res.ref}` : `❌ ไม่สำเร็จ: ${res.reason||res.error}`;
       if(res.ok) checkSlots();
     }catch(e){
