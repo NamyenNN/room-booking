@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard ผู้ใช้งาน - จองห้องประชุมของฉัน</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:980px;margin:auto}
+  h1{margin:0 0 12px}
+  fieldset{border:1px solid #ddd;padding:12px;margin:12px 0;border-radius:8px}
+  label{display:block;margin:6px 0 4px}
+  input,select,button{padding:8px;border:1px solid #ccc;border-radius:8px}
+  .filters{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end}
+  .hint{font-size:12px;color:#666}
+  .ok{color:#0a7}
+  .bad{color:#b00020}
+  table{width:100%;border-collapse:collapse;margin-top:12px}
+  th,td{border:1px solid #eee;padding:8px;text-align:left;font-size:14px}
+  th{background:#f9f9f9}
+  button.danger{border-color:#b00020;color:#b00020;background:#fff}
+  .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .who{font-size:13px;color:#444}
+  details{margin-top:14px}
+  pre{white-space:pre-wrap}
+</style>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <h1>การจองของฉัน</h1>
+  <div class="who" id="who">กำลังตรวจสอบผู้ใช้...</div>
+</div>
+
+<fieldset class="filters">
+  <div>
+    <label>จากวันที่</label>
+    <input type="date" id="date_from">
+  </div>
+  <div>
+    <label>ถึงวันที่</label>
+    <input type="date" id="date_to">
+  </div>
+  <div>
+    <label>ห้อง (ว่าง = ทั้งหมด)</label>
+    <select id="room"><option value="">(ทั้งหมด)</option></select>
+  </div>
+  <div>
+    <button id="load">โหลดรายการของฉัน</button>
+  </div>
+</fieldset>
+
+<div id="msg" class="hint"></div>
+<div id="tablebox"></div>
+
+<details><summary>DEBUG</summary><pre id="debug"></pre></details>
+
+<script>
+  // ===== ตั้งค่าให้ตรงกับระบบของคุณ =====
+  const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
+  const LIFF_ID = '2008386695-b1ykgdPk';
+  // ======================================
+
+  let lineUserId = '';
+  let displayName = '';
+
+  const $ = id => document.getElementById(id);
+  const log = t => { const el=$('debug'); if(el) el.textContent += t+'\n'; };
+  const msg = (t, cls='') => { const el=$('msg'); el.textContent=t; el.className='hint '+cls; };
+  const toDateStr = d => d.toISOString().slice(0,10);
+
+  // fetch helper (กันแคช + ไม่ตั้ง header ตอน POST เพื่อเลี่ยง preflight)
+  async function api(path, opt = {}){
+    const url = API + path + (path.includes('?')?'&':'?') + 'v=' + Date.now();
+    log('API: '+url+' method='+(opt.method||'GET'));
+    const res = await fetch(url, {
+      method: opt.method || 'GET',
+      body: opt.body || undefined,
+      mode: 'cors', credentials: 'omit', cache: 'no-store',
+      redirect: 'follow', referrerPolicy: 'no-referrer'
+    });
+    const raw = await res.text().catch(()=> '');
+    log('HTTP: '+res.status+' RAW: '+raw.slice(0,120));
+    if(!res.ok) throw new Error('HTTP '+res.status+' '+raw.slice(0,200));
+    try { return JSON.parse(raw); } catch { throw new Error('BAD JSON: '+raw.slice(0,200)); }
+  }
+
+  // 1) บังคับล็อกอินก่อน
+  async function initLIFFRequire(){
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) {
+      liff.login({ redirectUri: location.href });
+      return;
+    }
+    const p = await liff.getProfile();
+    lineUserId = p.userId || '';
+    displayName = p.displayName || '';
+    $('who').textContent = `เข้าสู่ระบบ: ${displayName}`;
+    log('LIFF OK user='+lineUserId);
+  }
+
+  // 2) โหลดห้องเพื่อตัวกรอง
+  async function loadRooms(){
+    const d = await api('?action=rooms');
+    const sel = $('room');
+    (d.rooms||[]).forEach(r=>{
+      const o=document.createElement('option');
+      o.value=r.room_id; o.textContent=r.room_name||r.room_id;
+      sel.appendChild(o);
+    });
+  }
+
+  // 3) โหลดการจองของฉัน
+  async function loadMyBookings(){
+    if(!lineUserId){ msg('ยังไม่พบ line_user (ต้องเปิดผ่าน LINE)', 'bad'); return; }
+    msg('กำลังโหลด...', '');
+    const d = await api(`?action=my_bookings&line_user=${encodeURIComponent(lineUserId)}`);
+    const items = (d.items||[]).slice(); // สำเนา
+
+    // กรองตามวัน/ห้องฝั่งหน้าเว็บ
+    const f = $('date_from').value, t = $('date_to').value, room = $('room').value;
+    const from = f ? new Date(f+'T00:00:00') : null;
+    const to   = t ? new Date(t+'T23:59:59') : null;
+
+    const filtered = items.filter(it=>{
+      if(room && it.room_id !== room) return false;
+      const dOnly = new Date(it.date+'T00:00:00');
+      if(from && dOnly < from) return false;
+      if(to && dOnly > to) return false;
+      return true;
+    });
+
+    // เรียงใกล้ก่อนไกล
+    filtered.sort((a,b)=>{
+      const ad = a.date.localeCompare(b.date);
+      if(ad!==0) return ad;
+      return (a.start||'').localeCompare(b.start||'');
+    });
+
+    renderTable(filtered);
+    msg(`โหลดแล้ว ${filtered.length} รายการ`, 'ok');
+  }
+
+  function renderTable(items){
+    let html = '<table><thead><tr>'+
+      '<th>Ref</th><th>ห้อง</th><th>วันที่</th><th>เวลา</th><th>ผู้จอง</th><th>วัตถุประสงค์</th><th>สถานะ</th><th>จัดการ</th>'+
+      '</tr></thead><tbody>';
+
+    if(!items.length){
+      html += '<tr><td colspan="8" style="text-align:center;color:#666">ไม่มีรายการ</td></tr>';
+    }else{
+      for(const it of items){
+        const canCancel = it.status!=='cancelled';
+        html += `<tr>
+          <td>${it.ref}</td>
+          <td>${it.room_id}</td>
+          <td>${it.date}</td>
+          <td>${it.start||'-'}-${it.end||'-'}</td>
+          <td>${it.by||'-'}</td>
+          <td>${it.purpose||'-'}</td>
+          <td>${it.status||'-'}</td>
+          <td>${canCancel ? `<button class="danger" data-ref="${it.ref}">ยกเลิก</button>` : '-'}</td>
+        </tr>`;
+      }
+    }
+    html += '</tbody></table>';
+    $('tablebox').innerHTML = html;
+
+    // bind ปุ่มยกเลิก
+    document.querySelectorAll('button.danger').forEach(btn=>{
+      btn.onclick = ()=> cancelSelf(btn.getAttribute('data-ref'));
+    });
+  }
+
+  // 4) ยกเลิกด้วยตัวเอง (ต้องเป็นเจ้าของ)
+  async function cancelSelf(ref){
+    if(!confirm('ยืนยันยกเลิก Ref: '+ref+' ?')) return;
+    msg('กำลังยกเลิก...', '');
+    try{
+      const form = new URLSearchParams();
+      form.set('payload', JSON.stringify({ action:'cancel', ref, line_user: lineUserId }));
+
+      const res = await api('', { method:'POST', body: form });
+      if(res.ok){
+        msg('✅ ยกเลิกเรียบร้อย', 'ok');
+        await loadMyBookings();
+      }else{
+        msg('❌ ยกเลิกไม่สำเร็จ: '+(res.reason||res.error||'unknown'), 'bad');
+      }
+    }catch(e){
+      msg('❌ ยกเลิกไม่สำเร็จ: '+String(e), 'bad');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', async ()=>{
+    // default date = วันนี้ → อีก 60 วัน
+    const today = new Date();
+    const twoM  = new Date(); twoM.setDate(today.getDate()+60);
+    $('date_from').value = toDateStr(today);
+    $('date_to').value   = toDateStr(twoM);
+
+    await initLIFFRequire();   // login ก่อน
+    await loadRooms();         // เติมรายชื่อห้องสำหรับกรอง
+    $('load').onclick = loadMyBookings;
+
+    // โหลดทันทีรอบแรก
+    loadMyBookings().catch(e=> msg('❌ โหลดไม่สำเร็จ: '+String(e), 'bad'));
+  });
+</script>
+</body>
+</html>
