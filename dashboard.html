@@ -1,34 +1,184 @@
-<!doctype html><html lang="th"><head>
+<!doctype html>
+<html lang="th">
+<head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard ห้องประชุม</title>
-<style>body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:1000px;margin:auto}.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}select,input,button{padding:10px;border:1px solid #ccc;border-radius:8px;width:100%}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #eee;padding:8px;text-align:left}th{background:#fafafa}.pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #ccc;margin-right:6px}.free{border-color:#2e7d32;color:#2e7d32}.busy{border-color:#b00020;color:#b00020}.muted{color:#666;font-size:12px}</style>
-</head><body>
-<h1>Dashboard ห้องประชุม</h1>
-<div class="grid">
-  <div><label>ห้อง</label><select id="room"></select></div>
-  <div><label>วันที่เริ่ม</label><input type="date" id="from"></div>
-  <div><label>วันที่สิ้นสุด</label><input type="date" id="to"></div>
+<title>Dashboard แอดมิน - จองห้องประชุม</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:980px;margin:auto}
+  h1{margin:0 0 12px}
+  fieldset{border:1px solid #ddd;padding:12px;margin:12px 0;border-radius:8px}
+  label{display:block;margin:6px 0 4px}
+  input,select,button{padding:8px;border:1px solid #ccc;border-radius:8px}
+  .filters{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;align-items:end}
+  .hint{font-size:12px;color:#666}
+  .ok{color:#0a7}
+  .bad{color:#b00020}
+  table{width:100%;border-collapse:collapse;margin-top:12px}
+  th,td{border:1px solid #eee;padding:8px;text-align:left;font-size:14px}
+  th{background:#f9f9f9}
+  button.danger{border-color:#b00020;color:#b00020;background:#fff}
+  .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .grow{flex:1}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>Dashboard แอดมิน - จองห้องประชุม</h1>
+  <div class="hint">ใส่ Admin Key เพื่อใช้งานยกเลิก (เก็บในเครื่องนี้เท่านั้น)</div>
 </div>
-<div style="margin-top:12px"><button id="load">โหลดข้อมูล</button> <span class="muted">* แสดงเฉพาะรายการที่ยังไม่ถูกยกเลิก</span></div>
-<div id="summary" style="margin-top:16px"></div>
-<table id="tbl" style="display:none"><thead><tr><th>วันที่</th><th>ห้อง</th><th>เวลา</th><th>ผู้จอง</th><th>วัตถุประสงค์</th><th>Ref</th></tr></thead><tbody></tbody></table>
-<script>
-// TODO: วางค่าของคุณ
-const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
 
-async function api(path){ const r=await fetch(API+path); return r.json(); }
-async function loadRooms(){ const r=await api('?action=rooms'); const sel=room; sel.innerHTML=''; const optAll=document.createElement('option'); optAll.value=''; optAll.textContent='ทุกห้อง'; sel.appendChild(optAll); (r.rooms||[]).forEach(x=>{ const o=document.createElement('option'); o.value=x.room_id; o.textContent=x.room_name||x.room_id; sel.appendChild(o); }); }
-function groupBy(a,k){ return a.reduce((m,x)=>((m[x[k]]=m[x[k]]||[]).push(x),m),{}); }
-async function load(){
-  const rmid=room.value, from=frm.value, to=toEl.value;
-  const r=await api(`?action=calendar&room_id=${encodeURIComponent(rmid)}&date_from=${encodeURIComponent(from)}&date_to=${encodeURIComponent(to)}`);
-  const tb=tbl.querySelector('tbody'); tb.innerHTML='';
-  const g=groupBy(r.items||[],'date'); const days=Object.keys(g).sort(); summary.innerHTML=days.length?days.map(d=>`<span class="pill busy">${d}: ${g[d].length} รายการ</span>`).join(' '):'<span class="pill free">ยังไม่มีการจองในช่วงนี้</span>';
-  (r.items||[]).sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start)).forEach(x=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${x.date}</td><td>${x.room_id}</td><td>${x.start}–${x.end}</td><td>${x.by||'-'}</td><td>${x.purpose||''}</td><td>${x.ref}</td>`; tb.appendChild(tr); });
-  tbl.style.display=(r.items||[]).length?'':'none';
-}
-const room=document.getElementById('room'), frm=document.getElementById('from'), toEl=document.getElementById('to'), summary=document.getElementById('summary'), tbl=document.getElementById('tbl');
-document.getElementById('load').onclick=load;
-(async ()=>{ await loadRooms(); const today=new Date().toISOString().slice(0,10); frm.value=today; toEl.value=today; await load(); })();
+<fieldset class="filters">
+  <div>
+    <label>Admin Key</label>
+    <input id="adminkey" placeholder="ใส่รหัสลับแอดมิน">
+  </div>
+  <div>
+    <label>จากวันที่</label>
+    <input type="date" id="date_from">
+  </div>
+  <div>
+    <label>ถึงวันที่</label>
+    <input type="date" id="date_to">
+  </div>
+  <div>
+    <label>ห้อง (ว่าง = ทั้งหมด)</label>
+    <select id="room"><option value="">(ทั้งหมด)</option></select>
+  </div>
+  <div>
+    <button id="load">โหลดรายการ</button>
+  </div>
+</fieldset>
+
+<div id="msg" class="hint"></div>
+<div id="tablebox"></div>
+
+<details style="margin-top:14px"><summary>DEBUG</summary><pre id="debug" style="white-space:pre-wrap"></pre></details>
+
+<script>
+  // ===== ตั้งค่าให้ตรงกับ booking.html / my.html =====
+  // ใช้ URL /exec ของ Apps Script (ตัวเดียวกับที่ GET ห้องได้จริง)
+  const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
+  // ================================================
+
+  const $ = id => document.getElementById(id);
+  const log = t => { const el=$('debug'); if(el) el.textContent += t+'\n'; };
+  const msg = (t, cls='') => { const el=$('msg'); el.textContent=t; el.className='hint '+cls; };
+
+  function toDateStr(d){ return d.toISOString().slice(0,10); }
+
+  // fetch helper (กันแคช + ไม่ตั้ง header ตอน POST เพื่อเลี่ยง preflight)
+  async function api(path, opt = {}){
+    const url = API + path + (path.includes('?')?'&':'?') + 'v=' + Date.now();
+    log('API: '+url+' method='+(opt.method||'GET'));
+    const res = await fetch(url, {
+      method: opt.method || 'GET',
+      body: opt.body || undefined,
+      mode: 'cors', credentials: 'omit', cache: 'no-store',
+      redirect: 'follow', referrerPolicy: 'no-referrer'
+    });
+    const raw = await res.text().catch(()=> '');
+    log('HTTP: '+res.status+' RAW: '+raw.slice(0,120));
+    if(!res.ok) throw new Error('HTTP '+res.status+' '+raw.slice(0,200));
+    try { return JSON.parse(raw); } catch { throw new Error('BAD JSON: '+raw.slice(0,200)); }
+  }
+
+  // โหลดห้องเพื่อทำตัวกรอง
+  async function loadRooms(){
+    const d = await api('?action=rooms');
+    const sel = $('room');
+    (d.rooms||[]).forEach(r=>{
+      const o=document.createElement('option');
+      o.value=r.room_id; o.textContent=r.room_name||r.room_id;
+      sel.appendChild(o);
+    });
+  }
+
+  // โหลดข้อมูลช่วงวัน/ห้อง
+  async function loadTable(){
+    const key = $('adminkey').value.trim();
+    if(!key){ msg('กรุณาใส่ Admin Key', 'bad'); return; }
+    localStorage.setItem('room_admin_key', key);
+
+    const f = $('date_from').value;
+    const t = $('date_to').value;
+    const room = $('room').value;
+
+    msg('กำลังโหลด...', '');
+    try{
+      const d = await api(`?action=calendar&room_id=${encodeURIComponent(room)}&date_from=${encodeURIComponent(f)}&date_to=${encodeURIComponent(t)}`);
+      const items = d.items || [];
+      renderTable(items);
+      msg(`โหลดแล้ว ${items.length} รายการ`, 'ok');
+    }catch(e){
+      msg('❌ โหลดไม่สำเร็จ: '+String(e), 'bad');
+    }
+  }
+
+  function renderTable(items){
+    let html = '<table><thead><tr>'+
+      '<th>Ref</th><th>ห้อง</th><th>วันที่</th><th>เวลา</th><th>ผู้จอง</th><th>วัตถุประสงค์</th><th>จัดการ</th>'+
+      '</tr></thead><tbody>';
+
+    if(!items.length){
+      html += '<tr><td colspan="7" style="text-align:center;color:#666">ไม่มีรายการ</td></tr>';
+    }else{
+      for(const it of items){
+        html += `<tr>
+          <td>${it.ref}</td>
+          <td>${it.room_id}</td>
+          <td>${it.date}</td>
+          <td>${it.start}-${it.end}</td>
+          <td>${it.by||'-'}</td>
+          <td>${it.purpose||'-'}</td>
+          <td><button class="danger" data-ref="${it.ref}">ยกเลิก (แอดมิน)</button></td>
+        </tr>`;
+      }
+    }
+    html += '</tbody></table>';
+    $('tablebox').innerHTML = html;
+
+    // bind ปุ่มยกเลิก
+    document.querySelectorAll('button.danger').forEach(btn=>{
+      btn.onclick = ()=> cancelAdmin(btn.getAttribute('data-ref'));
+    });
+  }
+
+  async function cancelAdmin(ref){
+    const key = $('adminkey').value.trim();
+    if(!key){ msg('กรุณาใส่ Admin Key', 'bad'); return; }
+    if(!confirm('ยืนยันยกเลิก Ref: '+ref+' ?')) return;
+
+    msg('กำลังยกเลิก...', '');
+    try{
+      // ส่งแบบ form-urlencoded: payload=<json> → เลี่ยง preflight
+      const form = new URLSearchParams();
+      form.set('payload', JSON.stringify({ action:'cancel_admin', ref, key }));
+
+      const res = await api('', { method:'POST', body: form });
+      if(res.ok){
+        msg('✅ ยกเลิกเรียบร้อย', 'ok');
+        await loadTable(); // รีเฟรชตาราง
+      }else{
+        msg('❌ ยกเลิกไม่สำเร็จ: '+(res.reason||res.error||'unknown'), 'bad');
+      }
+    }catch(e){
+      msg('❌ ยกเลิกไม่สำเร็จ: '+String(e), 'bad');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', async ()=>{
+    // preload วันที่: วันนี้ → อีก 14 วัน
+    const today = new Date();
+    const twoW  = new Date(); twoW.setDate(today.getDate()+14);
+    $('date_from').value = toDateStr(today);
+    $('date_to').value   = toDateStr(twoW);
+
+    // ดึง Admin Key จาก localStorage
+    $('adminkey').value = localStorage.getItem('room_admin_key') || '';
+
+    try { await loadRooms(); } catch(e){ msg('โหลดห้องไม่สำเร็จ: '+String(e), 'bad'); }
+    $('load').onclick = loadTable;
+  });
 </script>
-</body></html>
+</body>
+</html>
