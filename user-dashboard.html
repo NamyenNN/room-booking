@@ -26,18 +26,17 @@
   th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;font-size:13px;vertical-align:top}
   th{background:#f9f9f9}
   .status-badge{padding:1px 8px;border-radius:999px;border:1px solid #ddd;font-size:11px}
-  .status-wait{border-color:#777;color:#777}        /* ยังไม่ถึงเวลา */
-  .status-ongoing{border-color:#1565c0;color:#1565c0}/* กำลังประชุม */
-  .status-confirmed{border-color:#0a7;color:#0a7}   /* ยืนยันแล้ว */
-  .status-cancelled{border-color:#b00020;color:#b00020} /* ยกเลิก */
+  .status-wait{border-color:#777;color:#777}           /* ยังไม่ถึงเวลา */
+  .status-ongoing{border-color:#1565c0;color:#1565c0}  /* กำลังประชุม */
+  .status-confirmed{border-color:#0a7;color:#0a7}      /* ยืนยันแล้ว */
+  .status-cancelled{border-color:#b00020;color:#b00020}/* ยกเลิก */
   .empty{color:#777;text-align:center;padding:12px;border:1px dashed #ddd;border-radius:8px;background:#fff}
 </style>
-<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
 <div class="topbar">
   <h1>แดชบอร์ดการจองห้อง</h1>
-  <div class="who" id="who">กำลังตรวจสอบผู้ใช้...</div>
+  <div class="who" id="who">โหมดสาธารณะ • ไม่ต้องเข้าสู่ระบบ</div>
 </div>
 
 <fieldset class="filters">
@@ -66,11 +65,8 @@
 <script>
   // ===== ตั้งค่าให้ตรงกับระบบของคุณ =====
   const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
-  const LIFF_ID = '2008386695-b1ykgdPk';
   // ======================================
 
-  let lineUserId = '';
-  let displayName = '';
   let allRooms = [];   // [{room_id, room_name}]
   let allItems = [];   // bookings ทั้งหมด
 
@@ -108,21 +104,7 @@
     try { return JSON.parse(raw); } catch { throw new Error('BAD JSON: '+raw.slice(0,200)); }
   }
 
-  // 1) บังคับล็อกอินก่อน
-  async function initLIFFRequire(){
-    await liff.init({ liffId: LIFF_ID });
-    if (!liff.isLoggedIn()) {
-      liff.login({ redirectUri: location.href });
-      return;
-    }
-    const p = await liff.getProfile();
-    lineUserId = p.userId || '';
-    displayName = p.displayName || '';
-    $('who').textContent = `เข้าสู่ระบบ: ${displayName}`;
-    log('LIFF OK user='+lineUserId);
-  }
-
-  // 2) โหลดห้องสำหรับกรอง
+  // 1) โหลดห้องสำหรับกรอง
   async function loadRooms(){
     const d = await api('?action=rooms');
     allRooms = (d.rooms||[]).map(r=>({room_id:r.room_id, room_name:r.room_name||r.room_id}));
@@ -134,20 +116,11 @@
     });
   }
 
-  // 3) โหลดการจองทั้งหมด (read-only)
+  // 2) โหลดการจองทั้งหมด (read-only, สาธารณะ)
   async function loadAllBookings(){
-    try {
-      const d = await api('?action=bookings'); // ต้องมีใน Apps Script
-      allItems = d.items || [];
-      log('use action=bookings (all)');
-    } catch(e){
-      // fallback ชั่วคราว ถ้ายังไม่มี endpoint bookings
-      log('fallback to my_bookings: '+String(e));
-      if(!lineUserId){ throw new Error('ต้องเปิดผ่าน LINE เพื่อดึงข้อมูลชั่วคราว'); }
-      const d2 = await api(`?action=my_bookings&line_user=${encodeURIComponent(lineUserId)}`);
-      allItems = d2.items || [];
-      $('who').textContent += ' • (แสดงเฉพาะรายการของฉัน: API ยังไม่รองรับ bookings ทั้งหมด)';
-    }
+    // ต้องมี endpoint action=bookings ฝั่ง Apps Script
+    const d = await api('?action=bookings');
+    allItems = d.items || [];
   }
 
   // === สถานะ: ก่อนเวลา → wait, ระหว่างเวลา → กำลังประชุม, คง cancelled/confirmed เดิม ===
@@ -169,7 +142,7 @@
       if (now >= startDT && now <= endDT) {
         return { label:'กำลังประชุม', cls:'status-ongoing' };
       }
-    }catch(e){ /* ถ้าแปลงเวลาไม่สำเร็จ → ตกไปใช้สถานะเดิม */ }
+    }catch(e){}
 
     if (raw==='confirmed' || raw==='approved') return { label: it.status, cls:'status-confirmed' };
     return { label: it.status || '-', cls:'status-badge' };
@@ -179,7 +152,7 @@
     return `<span class="status-badge ${s.cls}">${s.label}</span>`;
   }
 
-  // เรนเดอร์แดชบอร์ด: ทุกห้อง หรือเฉพาะห้องที่เลือก
+  // 3) เรนเดอร์แดชบอร์ด: ทุกห้อง หรือเฉพาะห้องที่เลือก
   function renderDashboard(){
     const f = $('date_from').value, t = $('date_to').value, roomPick = $('room').value;
     const from = f ? new Date(f+'T00:00:00') : null;
@@ -256,6 +229,7 @@
 
   async function runLoad(){
     msg('กำลังโหลด...', '');
+    await loadRooms();
     await loadAllBookings();
     renderDashboard();
     msg('โหลดเสร็จแล้ว', 'ok');
@@ -268,9 +242,7 @@
     $('date_from').value = toDateStr(today);
     $('date_to').value   = toDateStr(twoM);
 
-    await initLIFFRequire();   // ต้องล็อกอินก่อน
-    await loadRooms();         // รายชื่อห้อง
-
+    // โหมดสาธารณะ: ไม่ต้องล็อกอิน แสดงได้เลย
     $('load').onclick = runLoad;
     // เปลี่ยนตัวกรองแล้วเรนเดอร์ทันที (ไม่ยิง API ใหม่)
     $('room').onchange = ()=> renderDashboard();
