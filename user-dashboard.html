@@ -158,7 +158,6 @@
   }
 
   // ===== Timeline helpers =====
-  // กำหนดช่วงเวลาให้ไทม์ไลน์ครอบคลุม (ปรับตามข้อมูลที่มี)
   const TL_START = 7;   // 07:00
   const TL_END   = 20;  // 20:00
   const TL_SPAN  = (TL_END - TL_START) * 60; // นาทีทั้งหมด
@@ -168,7 +167,6 @@
 
   // คืน HTML ของ timeline ต่อห้องสำหรับ "วันเดียว"
   function renderTimeline(roomId, itemsForRoomOnDate, dateStr){
-    // สร้าง ticks ทุกชั่วโมง
     let head = '<div class="timeline-head"><span>'+formatDateDMY(dateStr)+'</span><span>เวลา '+String(TL_START).padStart(2,'0')+':00 - '+TL_END+':00</span></div>';
     let html = '<div class="timeline">';
 
@@ -177,15 +175,12 @@
       html += `<div class="tick" style="left:${left}%"></div>`;
     }
 
-    // วาดช่องจอง
     itemsForRoomOnDate.forEach(it=>{
-      // แปลง start/end เป็นนาทีตั้งแต่ 00:00 แล้วเทียบแกน
       const sM = hmToMinutes(it.start || '00:00');
       const eM = hmToMinutes(it.end || '00:00');
-      // ตัดช่วงให้อยู่ใน TL_START..TL_END
       const sClamped = clamp(sM, TL_START*60, TL_END*60);
       const eClamped = clamp(eM || sClamped+60, TL_START*60, TL_END*60);
-      const widthMin = Math.max( (eClamped - sClamped), 10 ); // อย่างน้อย 10 นาทีให้มองเห็น
+      const widthMin = Math.max((eClamped - sClamped), 10);
       const leftPct  = ((sClamped - TL_START*60) / TL_SPAN) * 100;
       const widthPct = (widthMin / TL_SPAN) * 100;
 
@@ -202,16 +197,16 @@
   // เรนเดอร์แดชบอร์ด: ทุกห้อง หรือเฉพาะห้องที่เลือก (+ไทม์ไลน์เมื่อเลือกวันเดียว)
   function renderDashboard(){
     const f = $('date_from').value, t = $('date_to').value, roomPick = $('room').value;
-    const from = f ? new Date(f+'T00:00:00') : null;
-    const to   = t ? new Date(t+'T23:59:59') : null;
+
+    // เปลี่ยนมาใช้เทียบสตริง YYYY-MM-DD โดยตรง (กัน timezone เพี้ยน)
+    const fromS = f || null;
+    const toS   = t || null;
     const singleDay = !!(f && t && f === t);
 
-    // กรองตามวันที่ + ห้อง
     const filtered = allItems.filter(it=>{
       if(roomPick && it.room_id !== roomPick) return false;
-      const dOnly = new Date(it.date+'T00:00:00');
-      if(from && dOnly < from) return false;
-      if(to && dOnly > to) return false;
+      if(fromS && it.date < fromS) return false;
+      if(toS && it.date > toS) return false;
       return true;
     });
 
@@ -231,7 +226,6 @@
       });
     }
 
-    // ถ้าไม่ได้เลือกห้อง → แสดงทุกห้อง
     const roomList = (roomPick
       ? allRooms.filter(r=>byRoom.has(r.room_id))
       : allRooms.slice().sort((a,b)=> (a.room_name||'').localeCompare(b.room_name||'')));
@@ -244,8 +238,6 @@
     let html = '<div class="grid">';
     roomList.forEach(r=>{
       const items = byRoom.get(r.room_id) || [];
-
-      // กรอง “ของวันเดียว” สำหรับ timeline
       const itemsToday = singleDay ? items.filter(it => it.date === f) : [];
 
       html += `<div class="card">
@@ -278,7 +270,6 @@
     });
     html += '</div>';
 
-    // ถ้าผู้ใช้เลือกช่วงวันที่มากกว่า 1 วัน ให้บอก hint ว่าถ้าอยากเห็นไทม์ไลน์ให้เลือกวันเดียว
     if(!singleDay){
       html += `<div class="hint" style="margin-top:8px">💡 ถ้าอยากเห็น “แถบเวลาไทม์ไลน์” ให้เลือกช่วงวันที่เป็นวันเดียวกัน (ตั้งค่า <b>จากวันที่</b> และ <b>ถึงวันที่</b> เป็นวันเดียวกัน)</div>`;
     }
@@ -295,10 +286,11 @@
   }
 
   document.addEventListener('DOMContentLoaded', async ()=>{
-    // default date = วันนี้ → วันนี้ (ตั้งค่าเริ่มที่ "วันเดียว" เพื่อเห็นไทม์ไลน์ทันที)
+    // default date = วันนี้ → อีก 60 วัน (ให้เห็นรายการทันที)
     const today = new Date();
+    const twoM  = new Date(); twoM.setDate(today.getDate()+60);
     $('date_from').value = toDateStr(today);
-    $('date_to').value   = toDateStr(today);
+    $('date_to').value   = toDateStr(twoM);
 
     $('load').onclick = runLoad;
     $('room').onchange = renderDashboard;
