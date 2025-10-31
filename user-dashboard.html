@@ -4,29 +4,39 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard Meeting Room</title>
 <style>
-  body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:980px;margin:auto}
+  :root{--card:#fff;--muted:#666;--line:#eee;--chip:#f6f6f6}
+  body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:1100px;margin:auto;background:#fafafa}
   h1{margin:0 0 12px}
-  fieldset{border:1px solid #ddd;padding:12px;margin:12px 0;border-radius:8px}
+  fieldset{border:1px solid #ddd;padding:12px;margin:12px 0;border-radius:12px;background:#fff}
   label{display:block;margin:6px 0 4px}
-  input,select,button{padding:8px;border:1px solid #ccc;border-radius:8px}
+  input,select,button{padding:8px;border:1px solid #ccc;border-radius:10px;background:#fff}
   .filters{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end}
-  .hint{font-size:12px;color:#666}
+  .hint{font-size:12px;color:var(--muted)}
   .ok{color:#0a7}
   .bad{color:#b00020}
-  table{width:100%;border-collapse:collapse;margin-top:12px}
-  th,td{border:1px solid #eee;padding:8px;text-align:left;font-size:14px}
-  th{background:#f9f9f9}
-  button.danger{border-color:#b00020;color:#b00020;background:#fff}
   .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
   .who{font-size:13px;color:#444}
   details{margin-top:14px}
   pre{white-space:pre-wrap}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-top:12px}
+  .card{background:var(--card);border:1px solid #e9e9e9;border-radius:14px;padding:12px}
+  .card h3{margin:0 0 6px;font-size:16px}
+  .chip{display:inline-block;background:var(--chip);border:1px solid #e5e5e5;border-radius:999px;padding:2px 8px;font-size:12px;margin-right:6px}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;font-size:13px;vertical-align:top}
+  th{background:#f9f9f9}
+  .status-badge{padding:1px 8px;border-radius:999px;border:1px solid #ddd;font-size:11px}
+  .status-wait{border-color:#777;color:#777}        /* ยังไม่ถึงเวลา */
+  .status-ongoing{border-color:#1565c0;color:#1565c0}/* กำลังประชุม */
+  .status-confirmed{border-color:#0a7;color:#0a7}   /* ยืนยันแล้ว */
+  .status-cancelled{border-color:#b00020;color:#b00020} /* ยกเลิก */
+  .empty{color:#777;text-align:center;padding:12px;border:1px dashed #ddd;border-radius:8px;background:#fff}
 </style>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
 <div class="topbar">
-  <h1>การจองของฉัน</h1>
+  <h1>แดชบอร์ดการจองห้อง</h1>
   <div class="who" id="who">กำลังตรวจสอบผู้ใช้...</div>
 </div>
 
@@ -40,16 +50,16 @@
     <input type="date" id="date_to">
   </div>
   <div>
-    <label>ห้อง (ว่าง = ทั้งหมด)</label>
-    <select id="room"><option value="">(ทั้งหมด)</option></select>
+    <label>ห้อง (ว่าง = แสดงทุกห้อง)</label>
+    <select id="room"><option value="">(ทุกห้อง)</option></select>
   </div>
   <div>
-    <button id="load">โหลดรายการของฉัน</button>
+    <button id="load">โหลดแดชบอร์ด</button>
   </div>
 </fieldset>
 
 <div id="msg" class="hint"></div>
-<div id="tablebox"></div>
+<div id="dashboard"></div>
 
 <details><summary>DEBUG</summary><pre id="debug"></pre></details>
 
@@ -61,11 +71,26 @@
 
   let lineUserId = '';
   let displayName = '';
+  let allRooms = [];   // [{room_id, room_name}]
+  let allItems = [];   // bookings ทั้งหมด
 
   const $ = id => document.getElementById(id);
   const log = t => { const el=$('debug'); if(el) el.textContent += t+'\n'; };
   const msg = (t, cls='') => { const el=$('msg'); el.textContent=t; el.className='hint '+cls; };
   const toDateStr = d => d.toISOString().slice(0,10);
+
+  // === helpers ===
+  function formatDateDMY(dateStr){
+    // รับ 'YYYY-MM-DD' -> 'DD - MM - YYYY'
+    if(!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return '-';
+    const [y,m,d] = dateStr.split('-');
+    return `${d} - ${m} - ${y}`;
+  }
+  function parseDateTimeLocal(dateStr, timeStr){
+    // dateStr: 'YYYY-MM-DD', timeStr: 'HH:MM'
+    const t = (timeStr && /^\d{2}:\d{2}$/.test(timeStr)) ? timeStr : '00:00';
+    return new Date(`${dateStr}T${t}:00`);
+  }
 
   // fetch helper (กันแคช + ไม่ตั้ง header ตอน POST เพื่อเลี่ยง preflight)
   async function api(path, opt = {}){
@@ -97,97 +122,143 @@
     log('LIFF OK user='+lineUserId);
   }
 
-  // 2) โหลดห้องเพื่อตัวกรอง
+  // 2) โหลดห้องสำหรับกรอง
   async function loadRooms(){
     const d = await api('?action=rooms');
+    allRooms = (d.rooms||[]).map(r=>({room_id:r.room_id, room_name:r.room_name||r.room_id}));
     const sel = $('room');
-    (d.rooms||[]).forEach(r=>{
+    allRooms.forEach(r=>{
       const o=document.createElement('option');
-      o.value=r.room_id; o.textContent=r.room_name||r.room_id;
+      o.value=r.room_id; o.textContent=r.room_name;
       sel.appendChild(o);
     });
   }
 
-  // 3) โหลดการจองของฉัน
-  async function loadMyBookings(){
-    if(!lineUserId){ msg('ยังไม่พบ line_user (ต้องเปิดผ่าน LINE)', 'bad'); return; }
-    msg('กำลังโหลด...', '');
-    const d = await api(`?action=my_bookings&line_user=${encodeURIComponent(lineUserId)}`);
-    const items = (d.items||[]).slice(); // สำเนา
+  // 3) โหลดการจองทั้งหมด (read-only)
+  async function loadAllBookings(){
+    try {
+      const d = await api('?action=bookings'); // ต้องมีใน Apps Script
+      allItems = d.items || [];
+      log('use action=bookings (all)');
+    } catch(e){
+      // fallback ชั่วคราว ถ้ายังไม่มี endpoint bookings
+      log('fallback to my_bookings: '+String(e));
+      if(!lineUserId){ throw new Error('ต้องเปิดผ่าน LINE เพื่อดึงข้อมูลชั่วคราว'); }
+      const d2 = await api(`?action=my_bookings&line_user=${encodeURIComponent(lineUserId)}`);
+      allItems = d2.items || [];
+      $('who').textContent += ' • (แสดงเฉพาะรายการของฉัน: API ยังไม่รองรับ bookings ทั้งหมด)';
+    }
+  }
 
-    // กรองตามวัน/ห้องฝั่งหน้าเว็บ
-    const f = $('date_from').value, t = $('date_to').value, room = $('room').value;
+  // === สถานะ: ก่อนเวลา → wait, ระหว่างเวลา → กำลังประชุม, คง cancelled/confirmed เดิม ===
+  function effectiveStatus(it){
+    const raw = (it.status || '').toLowerCase();
+    if (raw === 'cancelled') return { label:'cancelled', cls:'status-cancelled' };
+
+    try{
+      const now = new Date();
+      const startDT = parseDateTimeLocal(it.date, it.start);
+      // ถ้าไม่ระบุ end → สมมติ 1 ชั่วโมง
+      const endDT   = it.end && /^\d{2}:\d{2}$/.test(it.end)
+        ? parseDateTimeLocal(it.date, it.end)
+        : new Date(startDT.getTime() + 60*60*1000);
+
+      if (now < startDT) {
+        return { label:'wait', cls:'status-wait' };
+      }
+      if (now >= startDT && now <= endDT) {
+        return { label:'กำลังประชุม', cls:'status-ongoing' };
+      }
+    }catch(e){ /* ถ้าแปลงเวลาไม่สำเร็จ → ตกไปใช้สถานะเดิม */ }
+
+    if (raw==='confirmed' || raw==='approved') return { label: it.status, cls:'status-confirmed' };
+    return { label: it.status || '-', cls:'status-badge' };
+  }
+  function statusBadge(it){
+    const s = effectiveStatus(it);
+    return `<span class="status-badge ${s.cls}">${s.label}</span>`;
+  }
+
+  // เรนเดอร์แดชบอร์ด: ทุกห้อง หรือเฉพาะห้องที่เลือก
+  function renderDashboard(){
+    const f = $('date_from').value, t = $('date_to').value, roomPick = $('room').value;
     const from = f ? new Date(f+'T00:00:00') : null;
     const to   = t ? new Date(t+'T23:59:59') : null;
 
-    const filtered = items.filter(it=>{
-      if(room && it.room_id !== room) return false;
+    // กรองตามวันที่ + ห้อง
+    const filtered = allItems.filter(it=>{
+      if(roomPick && it.room_id !== roomPick) return false;
       const dOnly = new Date(it.date+'T00:00:00');
       if(from && dOnly < from) return false;
       if(to && dOnly > to) return false;
       return true;
     });
 
-    // เรียงใกล้ก่อนไกล
-    filtered.sort((a,b)=>{
-      const ad = a.date.localeCompare(b.date);
-      if(ad!==0) return ad;
-      return (a.start||'').localeCompare(b.start||'');
+    // กลุ่มตามห้อง
+    const byRoom = new Map();
+    filtered.forEach(it=>{
+      if(!byRoom.has(it.room_id)) byRoom.set(it.room_id, []);
+      byRoom.get(it.room_id).push(it);
     });
 
-    renderTable(filtered);
-    msg(`โหลดแล้ว ${filtered.length} รายการ`, 'ok');
-  }
-
-  function renderTable(items){
-    let html = '<table><thead><tr>'+
-      '<th>Ref</th><th>ห้อง</th><th>วันที่</th><th>เวลา</th><th>ผู้จอง</th><th>วัตถุประสงค์</th><th>สถานะ</th><th>จัดการ</th>'+
-      '</tr></thead><tbody>';
-
-    if(!items.length){
-      html += '<tr><td colspan="8" style="text-align:center;color:#666">ไม่มีรายการ</td></tr>';
-    }else{
-      for(const it of items){
-        const canCancel = it.status!=='cancelled';
-        html += `<tr>
-          <td>${it.ref}</td>
-          <td>${it.room_id}</td>
-          <td>${it.date}</td>
-          <td>${it.start||'-'}-${it.end||'-'}</td>
-          <td>${it.by||'-'}</td>
-          <td>${it.purpose||'-'}</td>
-          <td>${it.status||'-'}</td>
-          <td>${canCancel ? `<button class="danger" data-ref="${it.ref}">ยกเลิก</button>` : '-'}</td>
-        </tr>`;
-      }
+    // เรียงรายการในแต่ละห้อง
+    for(const arr of byRoom.values()){
+      arr.sort((a,b)=>{
+        const ad = a.date.localeCompare(b.date);
+        if(ad!==0) return ad;
+        return (a.start||'').localeCompare(b.start||'');
+      });
     }
-    html += '</tbody></table>';
-    $('tablebox').innerHTML = html;
 
-    // bind ปุ่มยกเลิก
-    document.querySelectorAll('button.danger').forEach(btn=>{
-      btn.onclick = ()=> cancelSelf(btn.getAttribute('data-ref'));
+    // ถ้าไม่ได้เลือกห้อง → แสดงทุกห้อง
+    const roomList = (roomPick
+      ? allRooms.filter(r=>byRoom.has(r.room_id))
+      : allRooms.slice().sort((a,b)=> (a.room_name||'').localeCompare(b.room_name||'')));
+
+    if(roomList.length===0){
+      $('dashboard').innerHTML = `<div class="empty">ไม่มีข้อมูลในช่วงที่เลือก</div>`;
+      return;
+    }
+
+    let html = '<div class="grid">';
+    roomList.forEach(r=>{
+      const items = byRoom.get(r.room_id) || [];
+      html += `<div class="card">
+        <h3>${r.room_name}</h3>
+        <div class="hint">รายการ ${items.length} รายการ</div>
+        ${items.length ? `
+          <table>
+            <thead><tr>
+              <th style="width:140px">วันที่</th>
+              <th style="width:100px">เวลา</th>
+              <th>ผู้จอง</th>
+              <th>วัตถุประสงค์</th>
+              <th style="width:110px">สถานะ</th>
+            </tr></thead>
+            <tbody>
+              ${items.map(it=>`
+                <tr>
+                  <td>${formatDateDMY(it.date)}</td>
+                  <td>${(it.start||'-')+'-'+(it.end||'-')}</td>
+                  <td>${it.by||'-'}</td>
+                  <td>${it.purpose||'-'}</td>
+                  <td>${statusBadge(it)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        ` : `<div class="empty">ยังไม่มีการจอง</div>`}
+      </div>`;
     });
+    html += '</div>';
+    $('dashboard').innerHTML = html;
   }
 
-  // 4) ยกเลิกด้วยตัวเอง (ต้องเป็นเจ้าของ)
-  async function cancelSelf(ref){
-    if(!confirm('ยืนยันยกเลิก Ref: '+ref+' ?')) return;
-    msg('กำลังยกเลิก...', '');
-    try{
-      const form = new URLSearchParams();
-      form.set('payload', JSON.stringify({ action:'cancel', ref, line_user: lineUserId }));
-
-      const res = await api('', { method:'POST', body: form });
-      if(res.ok){
-        msg('✅ ยกเลิกเรียบร้อย', 'ok');
-        await loadMyBookings();
-      }else{
-        msg('❌ ยกเลิกไม่สำเร็จ: '+(res.reason||res.error||'unknown'), 'bad');
-      }
-    }catch(e){
-      msg('❌ ยกเลิกไม่สำเร็จ: '+String(e), 'bad');
-    }
+  async function runLoad(){
+    msg('กำลังโหลด...', '');
+    await loadAllBookings();
+    renderDashboard();
+    msg('โหลดเสร็จแล้ว', 'ok');
   }
 
   document.addEventListener('DOMContentLoaded', async ()=>{
@@ -197,12 +268,17 @@
     $('date_from').value = toDateStr(today);
     $('date_to').value   = toDateStr(twoM);
 
-    await initLIFFRequire();   // login ก่อน
-    await loadRooms();         // เติมรายชื่อห้องสำหรับกรอง
-    $('load').onclick = loadMyBookings;
+    await initLIFFRequire();   // ต้องล็อกอินก่อน
+    await loadRooms();         // รายชื่อห้อง
 
-    // โหลดทันทีรอบแรก
-    loadMyBookings().catch(e=> msg('❌ โหลดไม่สำเร็จ: '+String(e), 'bad'));
+    $('load').onclick = runLoad;
+    // เปลี่ยนตัวกรองแล้วเรนเดอร์ทันที (ไม่ยิง API ใหม่)
+    $('room').onchange = ()=> renderDashboard();
+    $('date_from').onchange = ()=> renderDashboard();
+    $('date_to').onchange = ()=> renderDashboard();
+
+    // โหลดรอบแรก → แดชบอร์ดทุกห้อง
+    runLoad().catch(e=> msg('❌ โหลดไม่สำเร็จ: '+String(e), 'bad'));
   });
 </script>
 </body>
