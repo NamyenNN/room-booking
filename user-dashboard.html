@@ -77,7 +77,7 @@
   // ======================================
 
   let allRooms = [];   // [{room_id, room_name}]
-  let allItems = [];   // bookings ทั้งหมด
+  let allItems = [];   // bookings ทั้งหมด (ยืนยันแล้วเท่านั้น เมื่อมาจาก calendar)
 
   const $ = id => document.getElementById(id);
   const log = t => { const el=$('debug'); if(el) el.textContent += t+'\n'; };
@@ -95,18 +95,13 @@
     return new Date(`${dateStr}T${t}:00`);
   }
 
-  // fetch helper (กันแคช + ไม่ตั้ง header ตอน POST เพื่อเลี่ยง preflight)
+  // fetch helper
   async function api(path, opt = {}){
     const url = API + path + (path.includes('?')?'&':'?') + 'v=' + Date.now();
     log('API: '+url+' method='+(opt.method||'GET'));
-    const res = await fetch(url, {
-      method: opt.method || 'GET',
-      body: opt.body || undefined,
-      mode: 'cors', credentials: 'omit', cache: 'no-store',
-      redirect: 'follow', referrerPolicy: 'no-referrer'
-    });
+    const res = await fetch(url, { method: opt.method || 'GET', body: opt.body || undefined, mode: 'cors', credentials: 'omit', cache: 'no-store', redirect: 'follow', referrerPolicy: 'no-referrer' });
     const raw = await res.text().catch(()=> '');
-    log('HTTP: '+res.status+' RAW: '+raw.slice(0,120));
+    log('HTTP: '+res.status+' RAW: '+raw.slice(0,200));
     if(!res.ok) throw new Error('HTTP '+res.status+' '+raw.slice(0,200));
     try { return JSON.parse(raw); } catch { throw new Error('BAD JSON: '+raw.slice(0,200)); }
   }
@@ -123,13 +118,40 @@
     });
   }
 
-  // 2) โหลดการจองทั้งหมด (read-only, สาธารณะ)
+  // 2) ดึงข้อมูลการจอง:
+  //    - พยายามเรียก bookings ก่อน (ถ้าคุณมี endpoint นี้)
+  //    - ถ้าไม่มี/ว่าง → ใช้ calendar แทน (รับรองมีในสคริปต์เดิม)
   async function loadAllBookings(){
-    const d = await api('?action=bookings');
-    allItems = d.items || [];
+    const f = $('date_from').value;
+    const t = $('date_to').value;
+    const roomPick = $('room').value || '';
+
+    // 2.1 ลอง bookings (อาจไม่มีในโปรเจ็กต์บางเวอร์ชัน)
+    try{
+      const b = await api('?action=bookings' + (roomPick ? '&room_id='+encodeURIComponent(roomPick): '') + (f? '&date_from='+f:'') + (t? '&date_to='+t:''));
+      if (b && b.ok && Array.isArray(b.items) && b.items.length){
+        allItems = b.items.map(x=>({
+          ref:x.ref, room_id:x.room_id, date:x.date, start:x.start, end:x.end, by:x.by, purpose:x.purpose,
+          status: (x.status || 'confirmed') // กันไว้ ถ้าไม่มีฟิลด์
+        }));
+        log('USED: bookings ('+allItems.length+' items)');
+        return;
+      }
+    }catch(err){
+      log('bookings failed: '+String(err));
+    }
+
+    // 2.2 fallback → calendar (ส่งเฉพาะที่ไม่ cancelled อยู่แล้ว)
+    const c = await api(`?action=calendar${roomPick?('&room_id='+encodeURIComponent(roomPick)) : ''}${f?('&date_from='+f):''}${t?('&date_to='+t):''}`);
+    const items = (c.items || []).map(x=>({
+      ref:x.ref, room_id:x.room_id, date:x.date, start:x.start, end:x.end, by:x.by, purpose:x.purpose,
+      status:'confirmed'
+    }));
+    allItems = items;
+    log('USED: calendar ('+allItems.length+' items)');
   }
 
-  // === สถานะ: ก่อนเวลา → wait, ระหว่างเวลา → กำลังประชุม, คง cancelled/confirmed เดิม ===
+  // === สถานะ: wait / กำลังประชุม / confirmed / cancelled ===
   function effectiveStatus(it){
     const raw = (it.status || '').toLowerCase();
     if (raw === 'cancelled') return { label:'cancelled', cls:'status-cancelled' };
@@ -141,16 +163,11 @@
         ? parseDateTimeLocal(it.date, it.end)
         : new Date(startDT.getTime() + 60*60*1000);
 
-      if (now < startDT) {
-        return { label:'wait', cls:'status-wait' };
-      }
-      if (now >= startDT && now <= endDT) {
-        return { label:'กำลังประชุม', cls:'status-ongoing' };
-      }
+      if (now < startDT) return { label:'wait', cls:'status-wait' };
+      if (now >= startDT && now <= endDT) return { label:'กำลังประชุม', cls:'status-ongoing' };
     }catch(e){}
 
-    if (raw==='confirmed' || raw==='approved') return { label: it.status, cls:'status-confirmed' };
-    return { label: it.status || '-', cls:'status-badge' };
+    return { label: raw || 'confirmed', cls:'status-confirmed' };
   }
   function statusBadge(it){
     const s = effectiveStatus(it);
@@ -161,20 +178,16 @@
   const TL_START = 7;   // 07:00
   const TL_END   = 20;  // 20:00
   const TL_SPAN  = (TL_END - TL_START) * 60; // นาทีทั้งหมด
-
   function hmToMinutes(hm){ const [h,m]=(hm||'00:00').split(':').map(Number); return (h*60+m); }
   function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
 
-  // คืน HTML ของ timeline ต่อห้องสำหรับ "วันเดียว"
   function renderTimeline(roomId, itemsForRoomOnDate, dateStr){
     let head = '<div class="timeline-head"><span>'+formatDateDMY(dateStr)+'</span><span>เวลา '+String(TL_START).padStart(2,'0')+':00 - '+TL_END+':00</span></div>';
     let html = '<div class="timeline">';
-
     for(let hr=TL_START+1; hr<=TL_END-1; hr++){
       const left = ((hr - TL_START) / (TL_END - TL_START)) * 100;
       html += `<div class="tick" style="left:${left}%"></div>`;
     }
-
     itemsForRoomOnDate.forEach(it=>{
       const sM = hmToMinutes(it.start || '00:00');
       const eM = hmToMinutes(it.end || '00:00');
@@ -194,11 +207,11 @@
     return '<div class="timeline-wrap">'+head+html+'</div>';
   }
 
-  // เรนเดอร์แดชบอร์ด: ทุกห้อง หรือเฉพาะห้องที่เลือก (+ไทม์ไลน์เมื่อเลือกวันเดียว)
+  // เรนเดอร์แดชบอร์ด
   function renderDashboard(){
     const f = $('date_from').value, t = $('date_to').value, roomPick = $('room').value;
 
-    // เปลี่ยนมาใช้เทียบสตริง YYYY-MM-DD โดยตรง (กัน timezone เพี้ยน)
+    // เทียบเป็นสตริง YYYY-MM-DD โดยตรง
     const fromS = f || null;
     const toS   = t || null;
     const singleDay = !!(f && t && f === t);
@@ -217,7 +230,7 @@
       byRoom.get(it.room_id).push(it);
     });
 
-    // เรียงรายการในแต่ละห้อง
+    // เรียงภายในห้อง
     for(const arr of byRoom.values()){
       arr.sort((a,b)=>{
         const ad = a.date.localeCompare(b.date);
@@ -271,7 +284,7 @@
     html += '</div>';
 
     if(!singleDay){
-      html += `<div class="hint" style="margin-top:8px">💡 ถ้าอยากเห็น “แถบเวลาไทม์ไลน์” ให้เลือกช่วงวันที่เป็นวันเดียวกัน (ตั้งค่า <b>จากวันที่</b> และ <b>ถึงวันที่</b> เป็นวันเดียวกัน)</div>`;
+      html += `<div class="hint" style="margin-top:8px">💡 ถ้าอยากเห็น “แถบเวลาไทม์ไลน์” ให้เลือกช่วงวันที่เป็นวันเดียวกัน</div>`;
     }
 
     $('dashboard').innerHTML = html;
@@ -280,22 +293,23 @@
   async function runLoad(){
     msg('กำลังโหลด...', '');
     await loadRooms();
-    await loadAllBookings();
+    await loadAllBookings(); // now uses bookings -> fallback calendar
     renderDashboard();
     msg('โหลดเสร็จแล้ว', 'ok');
   }
 
   document.addEventListener('DOMContentLoaded', async ()=>{
-    // default date = วันนี้ → อีก 60 วัน (ให้เห็นรายการทันที)
+    // default date = วันนี้ → อีก 60 วัน
     const today = new Date();
     const twoM  = new Date(); twoM.setDate(today.getDate()+60);
     $('date_from').value = toDateStr(today);
     $('date_to').value   = toDateStr(twoM);
 
     $('load').onclick = runLoad;
-    $('room').onchange = renderDashboard;
-    $('date_from').onchange = renderDashboard;
-    $('date_to').onchange = renderDashboard;
+    // ถ้าปรับตัวกรอง ก็ดึงใหม่จาก calendar เพื่อให้ข้อมูลตรงช่วงจริง
+    $('room').onchange = async ()=>{ await loadAllBookings(); renderDashboard(); };
+    $('date_from').onchange = async ()=>{ await loadAllBookings(); renderDashboard(); };
+    $('date_to').onchange = async ()=>{ await loadAllBookings(); renderDashboard(); };
 
     runLoad().catch(e=> msg('❌ โหลดไม่สำเร็จ: '+String(e), 'bad'));
   });
