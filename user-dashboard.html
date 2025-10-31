@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard Meeting</title>
+<title>Dashboard Meeting Room</title>
 <style>
   :root{--card:#fff;--muted:#666;--line:#eee;--chip:#f6f6f6}
   body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:1100px;margin:auto;background:#fafafa}
@@ -18,19 +18,28 @@
   .who{font-size:13px;color:#444}
   details{margin-top:14px}
   pre{white-space:pre-wrap}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-top:12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;margin-top:12px}
   .card{background:var(--card);border:1px solid #e9e9e9;border-radius:14px;padding:12px}
   .card h3{margin:0 0 6px;font-size:16px}
-  .chip{display:inline-block;background:var(--chip);border:1px solid #e5e5e5;border-radius:999px;padding:2px 8px;font-size:12px;margin-right:6px}
   table{width:100%;border-collapse:collapse;margin-top:8px}
   th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;font-size:13px;vertical-align:top}
   th{background:#f9f9f9}
   .status-badge{padding:1px 8px;border-radius:999px;border:1px solid #ddd;font-size:11px}
-  .status-wait{border-color:#777;color:#777}           /* ยังไม่ถึงเวลา */
-  .status-ongoing{border-color:#1565c0;color:#1565c0}  /* กำลังประชุม */
-  .status-confirmed{border-color:#0a7;color:#0a7}      /* ยืนยันแล้ว */
-  .status-cancelled{border-color:#b00020;color:#b00020}/* ยกเลิก */
+  .status-wait{border-color:#777;color:#777}
+  .status-ongoing{border-color:#1565c0;color:#1565c0}
+  .status-confirmed{border-color:#0a7;color:#0a7}
+  .status-cancelled{border-color:#b00020;color:#b00020}
   .empty{color:#777;text-align:center;padding:12px;border:1px dashed #ddd;border-radius:8px;background:#fff}
+
+  /* Timeline */
+  .timeline-wrap{margin-top:8px}
+  .timeline-head{display:flex;justify-content:space-between;font-size:11px;color:#555;margin:2px 2px 4px}
+  .timeline{position:relative;height:26px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;overflow:hidden}
+  .tick{position:absolute;top:0;bottom:0;width:1px;background:#f0f0f0}
+  .slot{position:absolute;top:2px;bottom:2px;border-radius:6px;border:1px solid #cfe3ff;background:#eaf3ff;font-size:11px;line-height:22px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .slot.ongoing{border-color:#bcdcff;background:#e3f0ff;box-shadow:0 0 0 1px rgba(21,101,192,.08) inset}
+  .slot.cancelled{border-color:#f2c4c4;background:#fdeeee;color:#b00020;text-decoration:line-through}
+  .timeline-legend{font-size:11px;color:#666;margin-top:4px}
 </style>
 </head>
 <body>
@@ -77,13 +86,11 @@
 
   // === helpers ===
   function formatDateDMY(dateStr){
-    // รับ 'YYYY-MM-DD' -> 'DD - MM - YYYY'
     if(!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return '-';
     const [y,m,d] = dateStr.split('-');
     return `${d} - ${m} - ${y}`;
   }
   function parseDateTimeLocal(dateStr, timeStr){
-    // dateStr: 'YYYY-MM-DD', timeStr: 'HH:MM'
     const t = (timeStr && /^\d{2}:\d{2}$/.test(timeStr)) ? timeStr : '00:00';
     return new Date(`${dateStr}T${t}:00`);
   }
@@ -118,7 +125,6 @@
 
   // 2) โหลดการจองทั้งหมด (read-only, สาธารณะ)
   async function loadAllBookings(){
-    // ต้องมี endpoint action=bookings ฝั่ง Apps Script
     const d = await api('?action=bookings');
     allItems = d.items || [];
   }
@@ -131,7 +137,6 @@
     try{
       const now = new Date();
       const startDT = parseDateTimeLocal(it.date, it.start);
-      // ถ้าไม่ระบุ end → สมมติ 1 ชั่วโมง
       const endDT   = it.end && /^\d{2}:\d{2}$/.test(it.end)
         ? parseDateTimeLocal(it.date, it.end)
         : new Date(startDT.getTime() + 60*60*1000);
@@ -152,11 +157,54 @@
     return `<span class="status-badge ${s.cls}">${s.label}</span>`;
   }
 
-  // 3) เรนเดอร์แดชบอร์ด: ทุกห้อง หรือเฉพาะห้องที่เลือก
+  // ===== Timeline helpers =====
+  // กำหนดช่วงเวลาให้ไทม์ไลน์ครอบคลุม (ปรับตามข้อมูลที่มี)
+  const TL_START = 7;   // 07:00
+  const TL_END   = 20;  // 20:00
+  const TL_SPAN  = (TL_END - TL_START) * 60; // นาทีทั้งหมด
+
+  function hmToMinutes(hm){ const [h,m]=(hm||'00:00').split(':').map(Number); return (h*60+m); }
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+  // คืน HTML ของ timeline ต่อห้องสำหรับ "วันเดียว"
+  function renderTimeline(roomId, itemsForRoomOnDate, dateStr){
+    // สร้าง ticks ทุกชั่วโมง
+    let head = '<div class="timeline-head"><span>'+formatDateDMY(dateStr)+'</span><span>เวลา '+String(TL_START).padStart(2,'0')+':00 - '+TL_END+':00</span></div>';
+    let html = '<div class="timeline">';
+
+    for(let hr=TL_START+1; hr<=TL_END-1; hr++){
+      const left = ((hr - TL_START) / (TL_END - TL_START)) * 100;
+      html += `<div class="tick" style="left:${left}%"></div>`;
+    }
+
+    // วาดช่องจอง
+    itemsForRoomOnDate.forEach(it=>{
+      // แปลง start/end เป็นนาทีตั้งแต่ 00:00 แล้วเทียบแกน
+      const sM = hmToMinutes(it.start || '00:00');
+      const eM = hmToMinutes(it.end || '00:00');
+      // ตัดช่วงให้อยู่ใน TL_START..TL_END
+      const sClamped = clamp(sM, TL_START*60, TL_END*60);
+      const eClamped = clamp(eM || sClamped+60, TL_START*60, TL_END*60);
+      const widthMin = Math.max( (eClamped - sClamped), 10 ); // อย่างน้อย 10 นาทีให้มองเห็น
+      const leftPct  = ((sClamped - TL_START*60) / TL_SPAN) * 100;
+      const widthPct = (widthMin / TL_SPAN) * 100;
+
+      const st = effectiveStatus(it);
+      const label = `${it.start||'-'}-${it.end||'-'} • ${it.by||'-'}`;
+      const cls = `slot ${st.cls === 'status-ongoing' ? 'ongoing' : ''} ${st.cls === 'status-cancelled' ? 'cancelled' : ''}`;
+      html += `<div class="${cls}" title="${label}" style="left:${leftPct}%;width:${widthPct}%">${label}</div>`;
+    });
+
+    html += '</div><div class="timeline-legend">* แถบสีแสดงช่วงเวลาที่ถูกจองของห้องนี้ในวันเดียวกัน</div>';
+    return '<div class="timeline-wrap">'+head+html+'</div>';
+  }
+
+  // เรนเดอร์แดชบอร์ด: ทุกห้อง หรือเฉพาะห้องที่เลือก (+ไทม์ไลน์เมื่อเลือกวันเดียว)
   function renderDashboard(){
     const f = $('date_from').value, t = $('date_to').value, roomPick = $('room').value;
     const from = f ? new Date(f+'T00:00:00') : null;
     const to   = t ? new Date(t+'T23:59:59') : null;
+    const singleDay = !!(f && t && f === t);
 
     // กรองตามวันที่ + ห้อง
     const filtered = allItems.filter(it=>{
@@ -196,9 +244,14 @@
     let html = '<div class="grid">';
     roomList.forEach(r=>{
       const items = byRoom.get(r.room_id) || [];
+
+      // กรอง “ของวันเดียว” สำหรับ timeline
+      const itemsToday = singleDay ? items.filter(it => it.date === f) : [];
+
       html += `<div class="card">
         <h3>${r.room_name}</h3>
-        <div class="hint">รายการ ${items.length} รายการ</div>
+        ${singleDay ? renderTimeline(r.room_id, itemsToday, f) : ''}
+        <div class="hint">รายการ ${items.length} รายการ${singleDay ? ' • มุมมองไทม์ไลน์ของวันเดียว' : ''}</div>
         ${items.length ? `
           <table>
             <thead><tr>
@@ -224,6 +277,12 @@
       </div>`;
     });
     html += '</div>';
+
+    // ถ้าผู้ใช้เลือกช่วงวันที่มากกว่า 1 วัน ให้บอก hint ว่าถ้าอยากเห็นไทม์ไลน์ให้เลือกวันเดียว
+    if(!singleDay){
+      html += `<div class="hint" style="margin-top:8px">💡 ถ้าอยากเห็น “แถบเวลาไทม์ไลน์” ให้เลือกช่วงวันที่เป็นวันเดียวกัน (ตั้งค่า <b>จากวันที่</b> และ <b>ถึงวันที่</b> เป็นวันเดียวกัน)</div>`;
+    }
+
     $('dashboard').innerHTML = html;
   }
 
@@ -236,20 +295,16 @@
   }
 
   document.addEventListener('DOMContentLoaded', async ()=>{
-    // default date = วันนี้ → อีก 60 วัน
+    // default date = วันนี้ → วันนี้ (ตั้งค่าเริ่มที่ "วันเดียว" เพื่อเห็นไทม์ไลน์ทันที)
     const today = new Date();
-    const twoM  = new Date(); twoM.setDate(today.getDate()+60);
     $('date_from').value = toDateStr(today);
-    $('date_to').value   = toDateStr(twoM);
+    $('date_to').value   = toDateStr(today);
 
-    // โหมดสาธารณะ: ไม่ต้องล็อกอิน แสดงได้เลย
     $('load').onclick = runLoad;
-    // เปลี่ยนตัวกรองแล้วเรนเดอร์ทันที (ไม่ยิง API ใหม่)
-    $('room').onchange = ()=> renderDashboard();
-    $('date_from').onchange = ()=> renderDashboard();
-    $('date_to').onchange = ()=> renderDashboard();
+    $('room').onchange = renderDashboard;
+    $('date_from').onchange = renderDashboard;
+    $('date_to').onchange = renderDashboard;
 
-    // โหลดรอบแรก → แดชบอร์ดทุกห้อง
     runLoad().catch(e=> msg('❌ โหลดไม่สำเร็จ: '+String(e), 'bad'));
   });
 </script>
