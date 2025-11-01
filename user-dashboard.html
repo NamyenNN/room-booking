@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard Meeting </title>
+<title>Dashboard Meeting</title>
 <style>
   :root{--card:#fff;--muted:#666;--line:#eee;--chip:#f6f6f6}
   body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:1100px;margin:auto;background:#fafafa}
@@ -10,10 +10,9 @@
   fieldset{border:1px solid #ddd;padding:12px;margin:12px 0;border-radius:12px;background:#fff}
   label{display:block;margin:6px 0 4px}
   input,select,button{padding:8px;border:1px solid #ccc;border-radius:10px;background:#fff}
-  .filters{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end}
+  .filters{display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px;align-items:end}
   .hint{font-size:12px;color:var(--muted)}
-  .ok{color:#0a7}
-  .bad{color:#b00020}
+  .ok{color:#0a7}.bad{color:#b00020}
   .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
   .who{font-size:13px;color:#444}
   details{margin-top:14px}
@@ -31,6 +30,12 @@
   .status-cancelled{border-color:#b00020;color:#b00020}
   .empty{color:#777;text-align:center;padding:12px;border:1px dashed #ddd;border-radius:8px;background:#fff}
 
+  /* live chip */
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid #ddd;border-radius:999px;background:#fff;font-size:12px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#0a7;box-shadow:0 0 0 0 rgba(10,167,128,.5);animation:pulse 1.6s infinite}
+  .dot.paused{background:#bbb;box-shadow:none;animation:none}
+  @keyframes pulse{to{box-shadow:0 0 0 10px rgba(10,167,128,0)}}
+
   /* Timeline */
   .timeline-wrap{margin-top:8px}
   .timeline-head{display:flex;justify-content:space-between;font-size:11px;color:#555;margin:2px 2px 4px}
@@ -45,7 +50,10 @@
 <body>
 <div class="topbar">
   <h1>แดชบอร์ดการจองห้อง</h1>
-  <div class="who" id="who">โหมดสาธารณะ • ไม่ต้องเข้าสู่ระบบ</div>
+  <div class="who" id="who">
+    <span class="chip"><span class="dot" id="liveDot"></span><span id="liveText">Live</span></span>
+    <span class="hint" id="stamp" style="margin-left:8px"></span>
+  </div>
 </div>
 
 <fieldset class="filters">
@@ -62,7 +70,12 @@
     <select id="room"><option value="">(ทุกห้อง)</option></select>
   </div>
   <div>
-    <button id="load">โหลดแดชบอร์ด</button>
+    <label>&nbsp;</label>
+    <button id="load">โหลดตอนนี้</button>
+  </div>
+  <div>
+    <label>อัปเดตทุก (วินาที)</label>
+    <input type="number" id="interval" min="3" step="1" value="7">
   </div>
 </fieldset>
 
@@ -76,23 +89,30 @@
   const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
   // ======================================
 
-  let allRooms = [];   // [{room_id, room_name}]
-  let allItems = [];   // bookings ทั้งหมด (ยืนยันแล้วเท่านั้น เมื่อมาจาก calendar)
+  let allRooms = [];
+  let allItems = [];
+  let pollTimer = null;
+  let lastHash = '';
+  let paused = false;
 
   const $ = id => document.getElementById(id);
   const log = t => { const el=$('debug'); if(el) el.textContent += t+'\n'; };
   const msg = (t, cls='') => { const el=$('msg'); el.textContent=t; el.className='hint '+cls; };
   const toDateStr = d => d.toISOString().slice(0,10);
+  const nowStamp = ()=> new Date().toLocaleString();
 
   // === helpers ===
   function formatDateDMY(dateStr){
     if(!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return '-';
-    const [y,m,d] = dateStr.split('-');
-    return `${d} - ${m} - ${y}`;
+    const [y,m,d] = dateStr.split('-'); return `${d} - ${m} - ${y}`;
   }
   function parseDateTimeLocal(dateStr, timeStr){
     const t = (timeStr && /^\d{2}:\d{2}$/.test(timeStr)) ? timeStr : '00:00';
     return new Date(`${dateStr}T${t}:00`);
+  }
+  function itemsHash(items){
+    // แฮชแบบง่าย: เอาคีย์หลักมาเรียงแล้ว stringify
+    return JSON.stringify(items.map(x=>[x.ref,x.room_id,x.date,x.start,x.end,x.by,x.purpose,x.status]).sort());
   }
 
   // fetch helper
@@ -106,80 +126,65 @@
     try { return JSON.parse(raw); } catch { throw new Error('BAD JSON: '+raw.slice(0,200)); }
   }
 
-  // 1) โหลดห้องสำหรับกรอง
+  // โหลดห้อง
   async function loadRooms(){
     const d = await api('?action=rooms');
     allRooms = (d.rooms||[]).map(r=>({room_id:r.room_id, room_name:r.room_name||r.room_id}));
     const sel = $('room');
+    sel.innerHTML = '<option value="">(ทุกห้อง)</option>';
     allRooms.forEach(r=>{
       const o=document.createElement('option');
-      o.value=r.room_id; o.textContent=r.room_name;
-      sel.appendChild(o);
+      o.value=r.room_id; o.textContent=r.room_name; sel.appendChild(o);
     });
   }
 
-  // 2) ดึงข้อมูลการจอง:
-  //    - พยายามเรียก bookings ก่อน (ถ้าคุณมี endpoint นี้)
-  //    - ถ้าไม่มี/ว่าง → ใช้ calendar แทน (รับรองมีในสคริปต์เดิม)
+  // ดึงข้อมูลการจอง (bookings → fallback calendar)
   async function loadAllBookings(){
     const f = $('date_from').value;
     const t = $('date_to').value;
     const roomPick = $('room').value || '';
 
-    // 2.1 ลอง bookings (อาจไม่มีในโปรเจ็กต์บางเวอร์ชัน)
+    // ลอง bookings ก่อน (มีสถานะ cancelled ด้วย ถ้าคุณเปิด endpoint นี้)
     try{
       const b = await api('?action=bookings' + (roomPick ? '&room_id='+encodeURIComponent(roomPick): '') + (f? '&date_from='+f:'') + (t? '&date_to='+t:''));
-      if (b && b.ok && Array.isArray(b.items) && b.items.length){
+      if (b && b.ok && Array.isArray(b.items)){
         allItems = b.items.map(x=>({
           ref:x.ref, room_id:x.room_id, date:x.date, start:x.start, end:x.end, by:x.by, purpose:x.purpose,
-          status: (x.status || 'confirmed') // กันไว้ ถ้าไม่มีฟิลด์
+          status: (x.status || 'confirmed')
         }));
         log('USED: bookings ('+allItems.length+' items)');
         return;
       }
-    }catch(err){
-      log('bookings failed: '+String(err));
-    }
+    }catch(err){ log('bookings failed: '+String(err)); }
 
-    // 2.2 fallback → calendar (ส่งเฉพาะที่ไม่ cancelled อยู่แล้ว)
+    // calendar: เฉพาะที่ไม่ cancelled
     const c = await api(`?action=calendar${roomPick?('&room_id='+encodeURIComponent(roomPick)) : ''}${f?('&date_from='+f):''}${t?('&date_to='+t):''}`);
-    const items = (c.items || []).map(x=>({
-      ref:x.ref, room_id:x.room_id, date:x.date, start:x.start, end:x.end, by:x.by, purpose:x.purpose,
-      status:'confirmed'
-    }));
-    allItems = items;
+    allItems = (c.items||[]).map(x=>({ ...x, status:'confirmed' }));
     log('USED: calendar ('+allItems.length+' items)');
   }
 
-  // === สถานะ: wait / กำลังประชุม / confirmed / cancelled ===
+  // สถานะ ณ ปัจจุบัน
   function effectiveStatus(it){
     const raw = (it.status || '').toLowerCase();
     if (raw === 'cancelled') return { label:'cancelled', cls:'status-cancelled' };
-
     try{
       const now = new Date();
-      const startDT = parseDateTimeLocal(it.date, it.start);
-      const endDT   = it.end && /^\d{2}:\d{2}$/.test(it.end)
-        ? parseDateTimeLocal(it.date, it.end)
-        : new Date(startDT.getTime() + 60*60*1000);
-
-      if (now < startDT) return { label:'wait', cls:'status-wait' };
-      if (now >= startDT && now <= endDT) return { label:'กำลังประชุม', cls:'status-ongoing' };
-    }catch(e){}
-
-    return { label: raw || 'confirmed', cls:'status-confirmed' };
+      const s = parseDateTimeLocal(it.date, it.start);
+      const e = it.end && /^\d{2}:\d{2}$/.test(it.end) ? parseDateTimeLocal(it.date, it.end) : new Date(s.getTime() + 60*60*1000);
+      if (now < s) return { label:'wait', cls:'status-wait' };
+      if (now >= s && now <= e) return { label:'กำลังประชุม', cls:'status-ongoing' };
+    }catch(_){}
+    return { label:'confirmed', cls:'status-confirmed' };
   }
-  function statusBadge(it){
+  const statusBadge = it => {
     const s = effectiveStatus(it);
     return `<span class="status-badge ${s.cls}">${s.label}</span>`;
-  }
+  };
 
-  // ===== Timeline helpers =====
-  const TL_START = 7;   // 07:00
-  const TL_END   = 20;  // 20:00
-  const TL_SPAN  = (TL_END - TL_START) * 60; // นาทีทั้งหมด
-  function hmToMinutes(hm){ const [h,m]=(hm||'00:00').split(':').map(Number); return (h*60+m); }
-  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+  // ===== Timeline =====
+  const TL_START = 7, TL_END = 20, TL_SPAN = (TL_END - TL_START) * 60;
+  const hmToMinutes = hm => { const [h,m]=(hm||'00:00').split(':').map(Number); return h*60+m; };
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 
   function renderTimeline(roomId, itemsForRoomOnDate, dateStr){
     let head = '<div class="timeline-head"><span>'+formatDateDMY(dateStr)+'</span><span>เวลา '+String(TL_START).padStart(2,'0')+':00 - '+TL_END+':00</span></div>';
@@ -189,20 +194,17 @@
       html += `<div class="tick" style="left:${left}%"></div>`;
     }
     itemsForRoomOnDate.forEach(it=>{
-      const sM = hmToMinutes(it.start || '00:00');
-      const eM = hmToMinutes(it.end || '00:00');
-      const sClamped = clamp(sM, TL_START*60, TL_END*60);
-      const eClamped = clamp(eM || sClamped+60, TL_START*60, TL_END*60);
-      const widthMin = Math.max((eClamped - sClamped), 10);
-      const leftPct  = ((sClamped - TL_START*60) / TL_SPAN) * 100;
-      const widthPct = (widthMin / TL_SPAN) * 100;
+      const sM = hmToMinutes(it.start||'00:00');
+      const eM = hmToMinutes(it.end||'00:00') || sM+60;
+      const sC = clamp(sM, TL_START*60, TL_END*60);
+      const eC = clamp(eM, TL_START*60, TL_END*60);
+      const leftPct  = ((sC - TL_START*60) / TL_SPAN) * 100;
+      const widthPct = (Math.max(eC - sC, 10) / TL_SPAN) * 100;
 
-      const st = effectiveStatus(it);
-      const label = `${it.start||'-'}-${it.end||'-'} • ${it.by||'-'}`;
-      const cls = `slot ${st.cls === 'status-ongoing' ? 'ongoing' : ''} ${st.cls === 'status-cancelled' ? 'cancelled' : ''}`;
-      html += `<div class="${cls}" title="${label}" style="left:${leftPct}%;width:${widthPct}%">${label}</div>`;
+      const on = effectiveStatus(it).cls === 'status-ongoing';
+      const cancelled = (it.status||'').toLowerCase()==='cancelled';
+      html += `<div class="slot ${on?'ongoing':''} ${cancelled?'cancelled':''}" title="${it.start||'-'}-${it.end||'-'} • ${it.by||'-'}" style="left:${leftPct}%;width:${widthPct}%">${it.start||'-'}-${it.end||'-'} • ${it.by||'-'}</div>`;
     });
-
     html += '</div><div class="timeline-legend">* แถบสีแสดงช่วงเวลาที่ถูกจองของห้องนี้ในวันเดียวกัน</div>';
     return '<div class="timeline-wrap">'+head+html+'</div>';
   }
@@ -210,11 +212,7 @@
   // เรนเดอร์แดชบอร์ด
   function renderDashboard(){
     const f = $('date_from').value, t = $('date_to').value, roomPick = $('room').value;
-
-    // เทียบเป็นสตริง YYYY-MM-DD โดยตรง
-    const fromS = f || null;
-    const toS   = t || null;
-    const singleDay = !!(f && t && f === t);
+    const fromS = f || null, toS = t || null, singleDay = !!(f && t && f===t);
 
     const filtered = allItems.filter(it=>{
       if(roomPick && it.room_id !== roomPick) return false;
@@ -223,20 +221,13 @@
       return true;
     });
 
-    // กลุ่มตามห้อง
     const byRoom = new Map();
     filtered.forEach(it=>{
       if(!byRoom.has(it.room_id)) byRoom.set(it.room_id, []);
       byRoom.get(it.room_id).push(it);
     });
-
-    // เรียงภายในห้อง
     for(const arr of byRoom.values()){
-      arr.sort((a,b)=>{
-        const ad = a.date.localeCompare(b.date);
-        if(ad!==0) return ad;
-        return (a.start||'').localeCompare(b.start||'');
-      });
+      arr.sort((a,b)=> a.date.localeCompare(b.date) || (a.start||'').localeCompare(b.start||''));
     }
 
     const roomList = (roomPick
@@ -290,14 +281,30 @@
     $('dashboard').innerHTML = html;
   }
 
-  async function runLoad(){
-    msg('กำลังโหลด...', '');
-    await loadRooms();
-    await loadAllBookings(); // now uses bookings -> fallback calendar
-    renderDashboard();
-    msg('โหลดเสร็จแล้ว', 'ok');
+  // ===== Real-time polling =====
+  async function tick(force=false){
+    if(paused && !force) return;
+    try{
+      await loadAllBookings();
+      const h = itemsHash(allItems);
+      if (force || h !== lastHash) {
+        lastHash = h;
+        renderDashboard();
+      }
+      $('stamp').textContent = 'อัปเดตล่าสุด: ' + nowStamp();
+      $('liveDot').classList.toggle('paused', paused);
+      $('liveText').textContent = paused ? 'Paused' : 'Live';
+    }catch(e){
+      $('stamp').textContent = 'อัปเดตล้มเหลว: ' + String(e);
+    }
+  }
+  function schedule(){
+    if(pollTimer) clearInterval(pollTimer);
+    const sec = Math.max(3, parseInt($('interval').value||'7',10));
+    pollTimer = setInterval(tick, sec*1000);
   }
 
+  // boot
   document.addEventListener('DOMContentLoaded', async ()=>{
     // default date = วันนี้ → อีก 60 วัน
     const today = new Date();
@@ -305,13 +312,23 @@
     $('date_from').value = toDateStr(today);
     $('date_to').value   = toDateStr(twoM);
 
-    $('load').onclick = runLoad;
-    // ถ้าปรับตัวกรอง ก็ดึงใหม่จาก calendar เพื่อให้ข้อมูลตรงช่วงจริง
-    $('room').onchange = async ()=>{ await loadAllBookings(); renderDashboard(); };
-    $('date_from').onchange = async ()=>{ await loadAllBookings(); renderDashboard(); };
-    $('date_to').onchange = async ()=>{ await loadAllBookings(); renderDashboard(); };
+    await loadRooms();
+    await tick(true);  // ดึงครั้งแรก + แสดงผล
+    schedule();        // เริ่มโพล
 
-    runLoad().catch(e=> msg('❌ โหลดไม่สำเร็จ: '+String(e), 'bad'));
+    // ปุ่ม “โหลดตอนนี้”
+    $('load').onclick = ()=> tick(true);
+
+    // เปลี่ยนตัวกรอง → ดึงใหม่ + รีเซ็ตโพล
+    $('room').onchange = ()=>{ tick(true); schedule(); };
+    $('date_from').onchange = ()=>{ tick(true); schedule(); };
+    $('date_to').onchange = ()=>{ tick(true); schedule(); };
+    $('interval').onchange = ()=>{ schedule(); };
+
+    // กลับมาโฟกัสหน้า → อัปเดตทันที
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) tick(true); });
+
+    msg('โหมดเรียลไทม์กำลังทำงาน', 'ok');
   });
 </script>
 </body>
