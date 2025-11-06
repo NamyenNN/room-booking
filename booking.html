@@ -1,25 +1,24 @@
 <!doctype html>
 <html lang="th">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="preconnect" href="https://script.google.com" crossorigin>
 <link rel="dns-prefetch" href="https://script.google.com">
 <link rel="preconnect" href="https://static.line-scdn.net" crossorigin>
 <link rel="dns-prefetch" href="https://static.line-scdn.net">
 <title>จองห้องประชุม</title>
 <style>
-  body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:720px;margin:auto}
-  fieldset{border:1px solid #ddd;padding:12px;margin-bottom:16px;border-radius:8px}
+  body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:720px;margin:auto;background:#fafafa}
+  fieldset{border:1px solid #ddd;padding:12px;margin-bottom:16px;border-radius:8px;background:#fff}
   label{display:block;margin:8px 0 4px}
   input,select,button,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .pill{display:inline-block;padding:4px 8px;border:1px solid #ccc;border-radius:999px;margin:4px 6px 0 0}
-  .bad{color:#b00020}
   .hint{font-size:12px;color:#666}
   details{margin-top:14px}
   pre{white-space:pre-wrap}
 
-  /* ==== Popup styles ==== */
+  /* Popup */
   #popup { position: fixed; inset: 0; display: none; }
   #popup.show { display: block; }
   #popup-backdrop{ position: absolute; inset:0; background: rgba(0,0,0,.35); }
@@ -31,11 +30,11 @@
   #popup-card h3{ margin:0 0 8px }
   #popup-card p{ margin:0 0 14px; color:#444 }
   #popup-card button{
-    width:100%; padding:10px 14px; border:1px solid #ccc; border-radius:10px; cursor:pointer;
+    width:100%; padding:10px 14px; border:1px solid #ccc;border-radius:10px;cursor:pointer;
     background:#f6f6f6;
   }
-  #popup-card button:active{ transform: translateY(1px); }
-  /* ==== Dashboard styles ==== */
+
+  /* Dashboard */
   .dash{margin-top:20px}
   .dash h2{margin:0 0 10px}
   .grid4{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
@@ -51,7 +50,8 @@
 <body>
 <h1>จองห้องประชุม</h1>
 
-<fieldset><legend>เลือกห้องและวันเวลา</legend>
+<fieldset>
+  <legend>เลือกห้องและวันเวลา</legend>
   <label>ห้อง</label>
   <select id="room"><option value="">(กำลังโหลด...)</option></select>
   <div class="row">
@@ -62,38 +62,30 @@
     <div><label>เวลาสิ้นสุด</label><input type="time" id="end"></div>
     <div><label>&nbsp;</label><button id="check">เช็กคิว</button></div>
   </div>
-  <div id="slots" style="display:none"></div>
 </fieldset>
 
-<!-- Dashboard: รายการที่จองแล้ว (4 กรอบ) -->
+<!-- Dashboard -->
 <section id="dash" class="dash">
   <h2>รายการที่จองแล้ว (ตามห้อง/วันที่เลือก)</h2>
   <div class="grid4">
-    <div class="card" id="box-morning">
-      <h3>เช้า (06:00–11:59)</h3>
-      <div class="count" id="c-morning">0 รายการ</div>
-      <div class="list" id="l-morning" class="muted">—</div>
+    <div class="card">
+      <h3>เช้า (06:00–11:59)</h3><div id="c-morning" class="count"></div><div id="l-morning"></div>
     </div>
-    <div class="card" id="box-noon">
-      <h3>เที่ยง–บ่ายต้น (12:00–14:59)</h3>
-      <div class="count" id="c-noon">0 รายการ</div>
-      <div class="list" id="l-noon" class="muted">—</div>
+    <div class="card">
+      <h3>เที่ยง–บ่ายต้น (12:00–14:59)</h3><div id="c-noon" class="count"></div><div id="l-noon"></div>
     </div>
-    <div class="card" id="box-evening">
-      <h3>บ่าย–เย็น (15:00–18:59)</h3>
-      <div class="count" id="c-evening">0 รายการ</div>
-      <div class="list" id="l-evening" class="muted">—</div>
+    <div class="card">
+      <h3>บ่าย–เย็น (15:00–18:59)</h3><div id="c-evening" class="count"></div><div id="l-evening"></div>
     </div>
-    <div class="card" id="box-night">
-      <h3>ค่ำ (19:00–23:59)</h3>
-      <div class="count" id="c-night">0 รายการ</div>
-      <div class="list" id="l-night" class="muted">—</div>
+    <div class="card">
+      <h3>ค่ำ (19:00–23:59)</h3><div id="c-night" class="count"></div><div id="l-night"></div>
     </div>
   </div>
-  <p class="muted" id="dash-foot">แสดงเฉพาะห้องและวันที่ที่เลือก</p>
+  <p class="muted">แสดงเฉพาะห้องและวันที่ที่เลือก</p>
 </section>
 
-<fieldset><legend>ข้อมูลผู้จอง</legend>
+<fieldset>
+  <legend>ข้อมูลผู้จอง</legend>
   <label>ชื่อผู้จอง</label><input id="by" placeholder="จะเติมจาก LINE ให้อัตโนมัติ">
   <label>วัตถุประสงค์</label><textarea id="purpose" rows="2" placeholder="เช่น ประชุมโครงการ..."></textarea>
 </fieldset>
@@ -104,285 +96,135 @@
 
 <details><summary>DEBUG</summary><pre id="debug"></pre></details>
 
-<!-- Popup: เวลา/ห้องนี้ถูกจองแล้ว -->
-<div id="popup" role="dialog" aria-modal="true" aria-labelledby="popup-title" style="display:none;">
+<!-- Popup -->
+<div id="popup">
   <div id="popup-backdrop"></div>
   <div id="popup-card">
     <h3 id="popup-title">ไม่สามารถจองได้</h3>
     <p id="popup-msg">ช่วงเวลานี้ถูกจองแล้ว กรุณาเลือกเวลาอื่น</p>
-    <button id="popup-ok" type="button">OK</button>
+    <button id="popup-ok">OK</button>
   </div>
 </div>
 
 <script>
-  // ===== ตั้งค่าของคุณ =====
-  const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
-  const LIFF_ID = '2008386695-b1ykgdPk';
-  // =========================
+const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
+const LIFF_ID = '2008386695-b1ykgdPk';
 
-  let lineUserId = '';
-  const $ = (id)=>document.getElementById(id);
-  const log = (t)=>{ try{ if(new URLSearchParams(location.search).get('debug')!=='1') return; }catch(_){} const el=$('debug'); if(el) el.textContent += t+'
-'; };
+let lineUserId = '';
+const $ = (id)=>document.getElementById(id);
+// ✅ แก้ตรงนี้ — ใช้ \n แทนบรรทัดใหม่
+const log = (t)=>{ try{ if(new URLSearchParams(location.search).get('debug')!=='1') return; }catch(_){} const el=$('debug'); if(el) el.textContent += t+'\n'; };
 
-  // ====== Popup helpers ======
-  function showPopup(message){
-    const popup = $('popup');
-    const msg   = $('popup-msg');
-    msg.textContent = message || 'ช่วงเวลานี้ถูกจองแล้ว กรุณาเลือกเวลาอื่น';
-    popup.classList.add('show');
-  }
-  function hidePopup(){ $('popup').classList.remove('show'); }
-  document.addEventListener('click', (e)=>{
-    if(e.target && e.target.id === 'popup-ok'){ hidePopup(); }
-    if(e.target && e.target.id === 'popup-backdrop'){ hidePopup(); }
+function showPopup(msg){$('popup-msg').textContent=msg;$('popup').classList.add('show');}
+function hidePopup(){$('popup').classList.remove('show');}
+document.addEventListener('click',e=>{if(['popup-ok','popup-backdrop'].includes(e.target.id))hidePopup();});
+
+async function api(path,opt={}){
+  const method=(opt.method||'GET').toUpperCase();
+  const bust=(method==='GET')?'':(path.includes('?')?'&':'?')+'v='+Date.now();
+  const url=API+path+bust;
+  const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),8000);
+  const res=await fetch(url,{method,body:opt.body||undefined,mode:'cors',cache:'no-store',signal:ctrl.signal});
+  clearTimeout(timer);
+  const txt=await res.text();log('HTTP '+res.status+': '+txt.slice(0,100));
+  if(!res.ok)throw new Error(txt);
+  return JSON.parse(txt);
+}
+
+async function cachedJSON(key,fetcher,ttl){
+  try{
+    const now=Date.now();const hit=localStorage.getItem(key);
+    if(hit){const o=JSON.parse(hit);if(o.t+ttl>now)return o.data;}
+    const d=await fetcher();localStorage.setItem(key,JSON.stringify({t:Date.now(),data:d}));return d;
+  }catch(e){return fetcher();}
+}
+
+// Dashboard
+function renderDash(booked){
+  const buckets={morning:[],noon:[],evening:[],night:[]};
+  (booked||[]).forEach(b=>{
+    const h=parseInt((b.start||'00:00').split(':')[0]);
+    if(h>=6&&h<12)buckets.morning.push(b);
+    else if(h>=12&&h<15)buckets.noon.push(b);
+    else if(h>=15&&h<19)buckets.evening.push(b);
+    else if(h>=19)buckets.night.push(b);
   });
-
-  // ========= API helper (เร็ว + timeout + เคารพ cache) =========
-  async function api(path, opt = {}) {
-    const method = (opt.method || 'GET').toUpperCase();
-    const bust = (method==='GET') ? '' : (path.includes('?') ? '&' : '?') + 'v=' + Date.now();
-    const url = API + path + bust;
-
-    const ctrl = new AbortController();
-    const timer = setTimeout(()=>ctrl.abort(new DOMException('Timeout','AbortError')), 8000);
-
-    log('API: '+url+' method='+method);
-    const res = await fetch(url, {
-      method,
-      body: opt.body || undefined,
-      mode: 'cors', credentials: 'omit',
-      cache: method==='GET' ? 'default' : 'no-store',
-      signal: ctrl.signal,
-      redirect: 'follow', referrerPolicy: 'no-referrer'
-    }).finally(()=> clearTimeout(timer));
-
-    const raw = await res.text().catch(()=> '');
-    log('HTTP: '+res.status+' RAW: '+raw.slice(0,120));
-    if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + raw.slice(0,200));
-    try { return JSON.parse(raw); } catch { throw new Error('BAD JSON: '+raw.slice(0,200)); }
-  }
-
-  // ===== UI helpers =====
-  function toPill(t,bad=false){
-    const el=document.createElement('span');
-    el.className='pill'+(bad?' bad':''); el.textContent=t; return el;
-  }
-
-  // cache JSON ง่าย ๆ ด้วย localStorage
-  async function cachedJSON(key, fetcher, ttlMs){
-    try{
-      const now=Date.now();
-      const hit = localStorage.getItem(key);
-      if(hit){
-        const obj = JSON.parse(hit);
-        if(obj && obj.t + ttlMs > now) return obj.data;
-      }
-      const data = await fetcher();
-      localStorage.setItem(key, JSON.stringify({t:Date.now(), data}));
-      return data;
-    }catch(e){ return fetcher(); }
-  }
-
-  // ==== Dashboard renderer ====
-  function renderDash(booked){
-    const buckets = {morning:[], noon:[], evening:[], night:[]};
-    (booked||[]).forEach(b=>{
-      const h = parseInt((b.start||'00:00').split(':')[0],10);
-      if(h>=6 && h<12) buckets.morning.push(b);
-      else if(h>=12 && h<15) buckets.noon.push(b);
-      else if(h>=15 && h<19) buckets.evening.push(b);
-      else if(h>=19 && h<=23) buckets.night.push(b);
+  const fill=(key,c,l)=>{
+    const arr=buckets[key];$(c).textContent=arr.length+' รายการ';const box=$(l);
+    box.innerHTML='';if(!arr.length){box.innerHTML='<div class="muted">— ว่าง —</div>';return;}
+    arr.sort((a,b)=>(a.start||'').localeCompare(b.start||''));arr.forEach(x=>{
+      const d=document.createElement('div');d.className='item';
+      d.textContent=`[${x.start}-${x.end}] ${x.by||x.purpose||''}`;box.appendChild(d);
     });
-    const fill=(key,idc,idl)=>{
-      const arr=buckets[key];
-      $(idc).textContent = (arr.length||0) + ' รายการ';
-      const box=$(idl); box.innerHTML='';
-      if(!arr.length){ box.innerHTML='<div class="muted">— ว่าง —</div>'; return; }
-      arr.sort((a,b)=> (a.start>a.end)-(b.start<b.end));
-      arr.forEach(x=>{
-        const div=document.createElement('div');
-        div.className='item';
-        div.textContent = `[${x.start}-${x.end}] ${x.title||x.purpose||''}`;
-        box.appendChild(div);
-      });
-    };
-    fill('morning','c-morning','l-morning');
-    fill('noon','c-noon','l-noon');
-    fill('evening','c-evening','l-evening');
-    fill('night','c-night','l-night');
-  }
+  };
+  fill('morning','c-morning','l-morning');
+  fill('noon','c-noon','l-noon');
+  fill('evening','c-evening','l-evening');
+  fill('night','c-night','l-night');
+}
 
-  // === Default date/time helpers ===
-  const pad = (n)=>String(n).padStart(2,'0');
-  function setDefaultDateAndTime(){
-    const dateEl=$('date'); const startEl=$('start'); const endEl=$('end');
-    const now=new Date();
-    const today=now.toISOString().slice(0,10);
-    dateEl.value=today; dateEl.min=today; // ไม่ให้เลือกอดีต
+// Date/time
+const pad=n=>String(n).padStart(2,'0');
+function setDefaultDateAndTime(){
+  const now=new Date();const today=now.toISOString().slice(0,10);
+  $('date').value=today;$('date').min=today;
+  let h=now.getHours(),m=now.getMinutes();if(m>0&&m<=30)m=30;else if(m>30){m=0;h=(h+1)%24;}
+  $('start').value=`${pad(h)}:${pad(m)}`;$('end').value=`${pad((h+1)%24)}:${pad(m)}`;
+}
+function autoAdjustEnd(){const s=$('start').value;if(!s)return;const [h,m]=s.split(':').map(Number);$('end').value=`${pad((h+1)%24)}:${pad(m)}`;}
 
-    let h=now.getHours();
-    let m=now.getMinutes();
-    // ปัดขึ้นเป็นช่วง 00/30 นาทีถัดไป
-    if(m===0){ /* 00 คงเดิม */ }
-    else if(m<=30){ m = 30; }
-    else { m = 0; h = (h+1) % 24; }
+// LIFF relaxed
+async function initLIFF(){
+  try{
+    await liff.init({liffId:LIFF_ID});
+    if(liff.isLoggedIn()){
+      const p=await liff.getProfile();lineUserId=p.userId;$('by').value=p.displayName||'';
+    }else{lineUserId='GUEST-'+Math.random().toString(36).slice(2,8);}
+  }catch(e){lineUserId='GUEST-'+Math.random().toString(36).slice(2,8);}
+}
 
-    const start = `${pad(h)}:${pad(m)}`;
-    let endH = h + 1, endM = m; let end;
-    if(h===23 && m>=30){
-      end = '23:59'; // ถ้าดึกมากให้จบก่อนเที่ยงคืน
-    } else {
-      if(endH>=24) endH = 23;
-      end = `${pad(endH)}:${pad(endM)}`;
+// load rooms
+async function loadRooms(){
+  const sel=$('room');
+  try{
+    const d=await cachedJSON('rooms',()=>api('?action=rooms'),120000);
+    const rooms=(d.rooms||[]);sel.innerHTML='';
+    rooms.forEach(r=>{const o=document.createElement('option');o.value=r.room_id;o.textContent=r.room_name||r.name||r.room_id;sel.appendChild(o);});
+  }catch(e){sel.innerHTML='<option value="">(โหลดห้องไม่สำเร็จ)</option>';log(e);}
+}
+
+// check slots
+async function checkSlots(){
+  const r=$('room').value,dt=$('date').value;if(!r||!dt){alert('กรุณาเลือกห้องและวันที่');return;}
+  const key=`slots_${r}_${dt}`;
+  const d=await cachedJSON(key,()=>api(`?action=slots&room_id=${r}&date=${dt}`),30000);
+  renderDash((d.booked)||[]);
+}
+
+// book
+async function book(){
+  const p={room_id:$('room').value,date:$('date').value,start:$('start').value,end:$('end').value,book_by:$('by').value,purpose:$('purpose').value,line_user:lineUserId};
+  const msg=$('msg');
+  if(!p.room_id||!p.date||!p.start||!p.end){msg.textContent='❌ กรอกข้อมูลให้ครบ';return;}
+  msg.textContent='กำลังบันทึก...';
+  try{
+    const form=new URLSearchParams();form.set('payload',JSON.stringify(p));
+    const res=await api('',{method:'POST',body:form});
+    if(!res.ok){
+      const err=(res.error||'').toUpperCase();
+      if(err.includes('TIME_CONFLICT')){showPopup('ช่วงเวลานี้ถูกจองแล้ว');msg.textContent='❌ เวลาซ้ำ';return;}
+      showPopup('จองไม่สำเร็จ: '+(res.error||'เกิดข้อผิดพลาด'));msg.textContent='❌ ไม่สำเร็จ';return;
     }
-    startEl.value = start;
-    endEl.value   = end;
-  }
+    msg.textContent='✅ จองสำเร็จ! Ref: '+(res.ref||'');checkSlots();
+  }catch(e){showPopup('เครือข่ายขัดข้อง');msg.textContent='❌ ไม่สำเร็จ: '+e.message;}
+}
 
-  function autoAdjustEnd(){
-    const s = $('start').value;
-    if(!s) return;
-    const [sh,sm] = s.split(':').map(Number);
-    let endH = sh + 1, endM = sm; let end;
-    if(sh===23 && sm>=30){ end = '23:59'; }
-    else { if(endH>=24) endH=23; end = `${pad(endH)}:${pad(endM)}`; }
-    if($('end').value <= s){ $('end').value = end; }
-  }
-
-  // --- LIFF (relaxed) ---
-  async function initLIFFRelaxed(){
-    try{
-      await liff.init({ liffId: LIFF_ID });
-
-      if (liff.isInClient()) {
-        const p = await liff.getProfile();
-        lineUserId = p.userId || '';
-        if (!$('by').value) $('by').value = p.displayName || '';
-        log('LIFF in-client OK user='+lineUserId);
-      } else {
-        if (!liff.isLoggedIn()) {
-          lineUserId = 'GUEST-' + Math.random().toString(36).slice(2,10);
-          log('LIFF web-guest user='+lineUserId);
-        } else {
-          const p = await liff.getProfile();
-          lineUserId = p.userId || '';
-          if (!$('by').value) $('by').value = p.displayName || '';
-          log('LIFF web-login OK user='+lineUserId);
-        }
-      }
-    }catch(err){
-      lineUserId = 'GUEST-' + Math.random().toString(36).slice(2,10);
-      log('LIFF init FAILED -> fallback guest: ' + err.message);
-    }
-  }
-
-  // --- โหลดรายชื่อห้อง ---
-  async function loadRooms(){
-    const sel = $('room'); const slots = $('slots');
-    try{
-      const d = await cachedJSON('rooms_v1', ()=> api('?action=rooms'), 120000); // cache 2 นาที
-      if(!d.ok) throw new Error(d.error||'API not ok');
-      const rooms = d.rooms || [];
-      if(rooms.length===0){
-        sel.innerHTML = '<option value="">(ยังไม่มีห้องในชีต Rooms แถว 2)</option>';
-        slots.textContent = 'กรอก A:room_id, B:room_name, C:capacity, D:note ตั้งแต่แถวที่ 2';
-        return;
-      }
-      const keep = sel.value;
-      sel.innerHTML = '';
-      rooms.forEach(r=>{
-        const o=document.createElement('option');
-        o.value=r.room_id; o.textContent=(r.name||r.room_name||r.roomId||r.room_id);
-        sel.appendChild(o);
-      });
-      if(keep) sel.value = keep;
-      log('rooms.length='+rooms.length);
-    }catch(e){
-      sel.innerHTML = '<option value="">(โหลดห้องไม่สำเร็จ)</option>';
-      $('slots').innerHTML = '<pre>❌ โหลดห้องไม่สำเร็จ
-สาเหตุ: '+String(e)+'
-API: '+API+'
-หน้าปัจจุบัน: '+location.href+'</pre>';
-    }
-  }
-
-  // --- โหลดคิวจองของวันนั้นลง Dashboard ---
-  async function checkSlots(){
-    const r = $('room').value, dt = $('date').value;
-    if(!r||!dt){ alert('กรุณาเลือกห้องและวันที่'); return; }
-    const key = `slots_${r}_${dt}`;
-    const d = await cachedJSON(key, ()=> api(`?action=slots&room_id=${encodeURIComponent(r)}&date=${encodeURIComponent(dt)}`), 30000); // cache 30 วิ
-    renderDash((d && d.booked) || []);
-  }
-
-  // --- จอง ---
-  async function book(){
-    const payload = {
-      room_id: $('room').value, date: $('date').value,
-      start: $('start').value, end: $('end').value,
-      book_by: $('by').value,  purpose: $('purpose').value,
-      line_user: lineUserId
-    };
-    const msg = $('msg');
-
-    if(!payload.room_id||!payload.date||!payload.start||!payload.end){
-      msg.textContent='❌ กรุณากรอกข้อมูลให้ครบ'; return;
-    }
-    if(payload.end <= payload.start){
-      showPopup('ช่วงเวลาสิ้นสุดต้องช้ากว่าเวลาเริ่ม'); return;
-    }
-    if(!payload.line_user){
-      msg.textContent='❌ ต้องเปิดผ่าน LINE (LIFF) เพื่อยืนยันตัวตนผู้จอง'; return;
-    }
-
-    msg.textContent='กำลังบันทึก...';
-    try{
-      const form = new URLSearchParams();
-      form.set('payload', JSON.stringify(payload));
-      const res = await api('', { method:'POST', body: form });
-
-      if(!res.ok){
-        const reason = (res.reason || res.error || '').toString().toUpperCase();
-        if(reason.includes('TIME_CONFLICT')){
-          showPopup('ช่วงเวลานี้ถูกจองแล้ว กรุณาเลือกเวลาอื่น');
-          msg.textContent = '❌ เวลาซ้ำกับรายการที่มีอยู่';
-          return;
-        }
-        showPopup('จองไม่สำเร็จ: ' + (res.reason || res.error || 'เกิดข้อผิดพลาด'));
-        msg.textContent = '❌ ไม่สำเร็จ: ' + (res.reason || res.error || '');
-        return;
-      }
-
-      msg.textContent = `จองสำเร็จ! Ref: ${res.ref || res.code || ''}`;
-      checkSlots();
-    }catch(e){
-      showPopup('เครือข่ายขัดข้อง: '+ e.message);
-      msg.textContent = '❌ ไม่สำเร็จ: ' + String(e);
-    }
-  }
-
-  // --- STARTUP ---
-  document.addEventListener('DOMContentLoaded', async ()=>{
-    // โหลดห้องก่อนเพื่อให้ UI ติดไว
-    loadRooms();
-
-    // LIFF relaxed (ถ้าไม่ได้ก็ guest)
-    await initLIFFRelaxed();
-
-    const qp = new URLSearchParams(location.search);
-    if (qp.get('redirect') === 'my') {
-      location.replace('my.html');
-      return;
-    }
-    setDefaultDateAndTime();
-    $('start').addEventListener('change', autoAdjustEnd);
-    $('check').onclick = checkSlots;
-    $('book').onclick  = book;
-
-    if($('room').value && $('date').value){ checkSlots(); }
-    log('READY');
-  });
+document.addEventListener('DOMContentLoaded',async()=>{
+  loadRooms();await initLIFF();setDefaultDateAndTime();
+  $('start').addEventListener('change',autoAdjustEnd);
+  $('check').onclick=checkSlots;
+  $('book').onclick=book;
+});
 </script>
 </body>
 </html>
