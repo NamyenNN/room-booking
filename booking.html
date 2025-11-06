@@ -10,9 +10,9 @@
 <title>จองห้องประชุม</title>
 <style>
   body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:720px;margin:auto;background:#fafafa}
-  fieldset{border:1px solid #ddd;padding:12px;margin-bottom:16px;border-radius:8px;background:#fff}
+  fieldset{border:1px solid #ddd;padding:12px;margin-bottom:16px;border-radius:12px;background:#fff}
   label{display:block;margin:8px 0 4px}
-  input,select,button,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px}
+  input,select,button,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:10px}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .hint{font-size:12px;color:#666}
   details{margin-top:14px}
@@ -60,7 +60,7 @@
   </div>
   <div class="row">
     <div><label>เวลาสิ้นสุด</label><input type="time" id="end"></div>
-    <div><label>&nbsp;</label><button id="check" type="button">เช็กคิว</button></div>
+    <div><!-- ปุ่มเช็กคิวถูกถอดออก --></div>
   </div>
 </fieldset>
 
@@ -81,7 +81,7 @@
       <h3>ค่ำ (19:00–23:59)</h3><div id="c-night" class="count">0 รายการ</div><div id="l-night" class="muted">— ว่าง —</div>
     </div>
   </div>
-  <p class="muted">แสดงเฉพาะห้องและวันที่ที่เลือก</p>
+  <p class="muted">แสดงเฉพาะห้องและวันที่ที่เลือก • อัปเดตอัตโนมัติทุก 15 วินาที</p>
 </section>
 
 <fieldset>
@@ -111,6 +111,9 @@ const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe
 const LIFF_ID = '2008386695-b1ykgdPk';
 
 let lineUserId = '';
+let refreshTimer = null;           // ตัวจับ interval dashboard
+const REFRESH_MS = 15000;          // รีเฟรชทุก 15 วินาที
+
 const $ = (id)=>document.getElementById(id);
 const log = (t)=>{ try{ if(new URLSearchParams(location.search).get('debug')!=='1') return; }catch(_){} const el=$('debug'); if(el) el.textContent += t+'\n'; };
 
@@ -120,10 +123,10 @@ document.addEventListener('click',e=>{if(['popup-ok','popup-backdrop'].includes(
 
 async function api(path,opt={}){
   const method=(opt.method||'GET').toUpperCase();
-  const bust=(method==='GET')?'':(path.includes('?')?'&':'?')+'v='+Date.now();
+  const bust=(method==='GET' && !opt.nobust) ? '' : (path.includes('?')?'&':'?')+'v='+Date.now();
   const url=API+path+bust;
   const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),8000);
-  const res=await fetch(url,{method,body:opt.body||undefined,mode:'cors',cache:method==='GET'?'default':'no-store',signal:ctrl.signal});
+  const res=await fetch(url,{method,body:opt.body||undefined,mode:'cors',cache:'no-store',signal:ctrl.signal});
   clearTimeout(timer);
   const txt=await res.text();log('HTTP '+res.status+': '+txt.slice(0,120));
   if(!res.ok)throw new Error(txt);
@@ -188,7 +191,7 @@ async function initLIFF(){
 async function loadRoomsAndInitDash(){
   const sel=$('room');
   try{
-    const d=await cachedJSON('rooms',()=>api('?action=rooms'),120000);
+    const d=await cachedJSON('rooms',()=>api('?action=rooms'),120000); // แคช 2 นาที
     const rooms=(d.rooms||[]);
     sel.innerHTML='';
     rooms.forEach(r=>{
@@ -197,25 +200,32 @@ async function loadRoomsAndInitDash(){
       o.textContent=r.room_name||r.name||r.room_id;
       sel.appendChild(o);
     });
-    // ถ้ายังไม่เลือกห้อง ให้เลือกอันแรก
     if(!sel.value && rooms.length){ sel.value = rooms[0].room_id; }
-    // เรียก dashboard ครั้งแรกทันที
-    if(sel.value && $('date').value){ await checkSlots(); }
+    await checkSlots(); // ครั้งแรก
+    startAutoRefresh(); // เริ่มรีเฟรชอัตโนมัติ
   }catch(e){
     sel.innerHTML='<option value="">(โหลดห้องไม่สำเร็จ)</option>';
     log('rooms error: '+e.message);
   }
 }
 
-// check slots (อัปเดต dashboard)
+// check slots (อัปเดต dashboard) — บังคับ fresh ทุกครั้งด้วยตัวแปรเวลา
 async function checkSlots(){
   const r=$('room').value,dt=$('date').value;
   if(!r||!dt){ return; }
-  const key=`slots_${r}_${dt}`;
-  const d=await cachedJSON(key,()=>api(`?action=slots&room_id=${encodeURIComponent(r)}&date=${encodeURIComponent(dt)}`),30000);
-  // รองรับทั้งแบบ {ok:true, booked:[]} และแบบ {booked:[]}
-  const booked = (d && (d.booked || (d.ok && d.booked))) ? d.booked : (d.booked||[]);
-  renderDash(booked||[]);
+  const url = `?action=slots&room_id=${encodeURIComponent(r)}&date=${encodeURIComponent(dt)}&t=${Date.now()}`;
+  const d=await api(url,{nobust:false});      // GET พร้อม &t=… เพื่อกันแคชเสมอ
+  const booked = (d && d.booked) ? d.booked : [];
+  renderDash(booked);
+}
+
+// ตั้ง timer รีเฟรช dashboard
+function startAutoRefresh(){
+  stopAutoRefresh();
+  refreshTimer = setInterval(checkSlots, REFRESH_MS);
+}
+function stopAutoRefresh(){
+  if(refreshTimer){ clearInterval(refreshTimer); refreshTimer=null; }
 }
 
 // book
@@ -234,22 +244,25 @@ async function book(){
       showPopup('จองไม่สำเร็จ: '+(res.error||res.reason||'เกิดข้อผิดพลาด'));msg.textContent='❌ ไม่สำเร็จ';return;
     }
     msg.textContent='✅ จองสำเร็จ! Ref: '+(res.ref||'');
-    await checkSlots(); // รีเฟรช dashboard
+    await checkSlots(); // รีเฟรช dashboard ทันที
   }catch(e){showPopup('เครือข่ายขัดข้อง');msg.textContent='❌ ไม่สำเร็จ: '+e.message;}
 }
 
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden) stopAutoRefresh();
+  else startAutoRefresh();
+});
+
 document.addEventListener('DOMContentLoaded',async()=>{
-  setDefaultDateAndTime();         // ตั้งค่าวัน/เวลา ก่อน เพื่อให้ checkSlots ใช้ได้เลย
-  await initLIFF();                // liff relaxed
-  await loadRoomsAndInitDash();    // โหลดห้อง + เรียก dashboard ครั้งแรกอัตโนมัติ
+  setDefaultDateAndTime();
+  await initLIFF();
+  await loadRoomsAndInitDash();
 
-  // เปลี่ยนห้อง/วันที่ → อัปเดต Dashboard อัตโนมัติ
-  $('room').addEventListener('change', checkSlots);
-  $('date').addEventListener('change', checkSlots);
+  // เปลี่ยนห้อง/วันที่ → รีเฟรชทันที + รีสตาร์ท interval
+  $('room').addEventListener('change', ()=>{ checkSlots(); startAutoRefresh(); });
+  $('date').addEventListener('change', ()=>{ checkSlots(); startAutoRefresh(); });
 
-  // ปรับเวลาอัตโนมัติ + ปุ่มต่าง ๆ
   $('start').addEventListener('change', autoAdjustEnd);
-  $('check').onclick=checkSlots;   // ปุ่มเช็กคิว (เผื่ออยากกดเอง)
   $('book').onclick=book;
 });
 </script>
