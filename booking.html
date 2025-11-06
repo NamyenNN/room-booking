@@ -31,6 +31,16 @@
     background:#f6f6f6;
   }
   #popup-card button:active{ transform: translateY(1px); }
+  /* ==== Dashboard styles ==== */
+  .dash{margin-top:20px}
+  .dash h2{margin:0 0 10px}
+  .grid4{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  @media (min-width:900px){.grid4{grid-template-columns:repeat(4,1fr)}}
+  .card{background:#fff;border:1px solid #eee;border-radius:12px;padding:12px}
+  .card h3{margin:0 0 6px;font-size:16px}
+  .card .count{font-size:12px;color:#666;margin-bottom:8px}
+  .item{font-size:13px;border-top:1px dashed #eee;padding:6px 0}
+  .muted{color:#666;font-size:12px}
 </style>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
@@ -48,8 +58,36 @@
     <div><label>เวลาสิ้นสุด</label><input type="time" id="end"></div>
     <div><label>&nbsp;</label><button id="check">เช็กคิว</button></div>
   </div>
-  <div id="slots"></div>
+  <div id="slots" style="display:none"></div>
 </fieldset>
+
+<!-- Dashboard: รายการที่จองแล้ว (4 กรอบ) -->
+<section id="dash" class="dash">
+  <h2>รายการที่จองแล้ว (ตามห้อง/วันที่เลือก)</h2>
+  <div class="grid4">
+    <div class="card" id="box-morning">
+      <h3>เช้า (06:00–11:59)</h3>
+      <div class="count" id="c-morning">0 รายการ</div>
+      <div class="list" id="l-morning" class="muted">—</div>
+    </div>
+    <div class="card" id="box-noon">
+      <h3>เที่ยง–บ่ายต้น (12:00–14:59)</h3>
+      <div class="count" id="c-noon">0 รายการ</div>
+      <div class="list" id="l-noon" class="muted">—</div>
+    </div>
+    <div class="card" id="box-evening">
+      <h3>บ่าย–เย็น (15:00–18:59)</h3>
+      <div class="count" id="c-evening">0 รายการ</div>
+      <div class="list" id="l-evening" class="muted">—</div>
+    </div>
+    <div class="card" id="box-night">
+      <h3>ค่ำ (19:00–23:59)</h3>
+      <div class="count" id="c-night">0 รายการ</div>
+      <div class="list" id="l-night" class="muted">—</div>
+    </div>
+  </div>
+  <p class="muted" id="dash-foot">แสดงเฉพาะห้องและวันที่ที่เลือก</p>
+</section>
 
 <fieldset><legend>ข้อมูลผู้จอง</legend>
   <label>ชื่อผู้จอง</label><input id="by" placeholder="จะเติมจาก LINE ให้อัตโนมัติ">
@@ -117,6 +155,35 @@
   function toPill(t,bad=false){
     const el=document.createElement('span');
     el.className='pill'+(bad?' bad':''); el.textContent=t; return el;
+  }
+
+  // ==== Dashboard renderer ====
+  function renderDash(booked){
+    const buckets = {morning:[], noon:[], evening:[], night:[]};
+    (booked||[]).forEach(b=>{
+      const h = parseInt((b.start||'00:00').split(':')[0],10);
+      if(h>=6 && h<12) buckets.morning.push(b);
+      else if(h>=12 && h<15) buckets.noon.push(b);
+      else if(h>=15 && h<19) buckets.evening.push(b);
+      else if(h>=19 && h<=23) buckets.night.push(b);
+    });
+    const fill=(key,idc,idl)=>{
+      const arr=buckets[key];
+      $(idc).textContent = (arr.length||0) + ' รายการ';
+      const box=$(idl); box.innerHTML='';
+      if(!arr.length){ box.innerHTML='<div class="muted">— ว่าง —</div>'; return; }
+      arr.sort((a,b)=> (a.start>a.end)-(b.start<b.end));
+      arr.forEach(x=>{
+        const div=document.createElement('div');
+        div.className='item';
+        div.textContent = `[${x.start}-${x.end}] ${x.title||x.purpose||''}`;
+        box.appendChild(div);
+      });
+    };
+    fill('morning','c-morning','l-morning');
+    fill('noon','c-noon','l-noon');
+    fill('evening','c-evening','l-evening');
+    fill('night','c-night','l-night');
   }
 
   // === Default date/time helpers ===
@@ -198,6 +265,10 @@
     const r = $('room').value, dt = $('date').value;
     if(!r||!dt){ alert('กรุณาเลือกห้องและวันที่'); return; }
     const d = await api(`?action=slots&room_id=${encodeURIComponent(r)}&date=${encodeURIComponent(dt)}`);
+    // ไม่แสดงใต้ตัวเลือกแล้ว -> ไปลง Dashboard ด้านล่างแทน
+    renderDash(d.booked||[]);
+  }
+    const d = await api(`?action=slots&room_id=${encodeURIComponent(r)}&date=${encodeURIComponent(dt)}`);
     const box = $('slots'); box.innerHTML='';
     if(d.booked && d.booked.length){
       box.append('ช่วงเวลาที่ถูกจองแล้ว: ');
@@ -266,9 +337,10 @@
     }
     await loadRooms();                     // 2) กลับมาแล้วค่อยโหลดห้อง
     setDefaultDateAndTime();
-    // เมื่อเปลี่ยนเวลาเริ่ม ให้ขยับเวลาสิ้นสุดอัตโนมัติ
     $('start').addEventListener('change', autoAdjustEnd);
     $('check').onclick = checkSlots;
+    // โหลดภาพรวมครั้งแรกตามค่าดีฟอลต์
+    if($('room').value && $('date').value){ checkSlots(); }
     $('book').onclick  = book;
     log('READY');
   });
