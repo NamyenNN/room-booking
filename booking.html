@@ -7,8 +7,11 @@
 <link rel="dns-prefetch" href="https://script.google.com">
 <link rel="preconnect" href="https://static.line-scdn.net" crossorigin>
 <link rel="dns-prefetch" href="https://static.line-scdn.net">
+
 <title>จองห้องประชุม</title>
+<!-- favicon (ใช้ไฟล์ LOGOCS.png ที่ repo เดียวกัน) -->
 <link rel="icon" type="image/png" href="https://namyennn.github.io/room-booking/LOGOCS.png?v=1">
+
 <style>
   body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:720px;margin:auto;background:#fafafa}
   fieldset{border:1px solid #ddd;padding:12px;margin-bottom:16px;border-radius:12px;background:#fff}
@@ -51,29 +54,16 @@
   .item{font-size:13px;border-top:1px dashed #eee;padding:6px 0}
   .muted{color:#666;font-size:12px}
 
-  /* --- Compact time inputs --- */
-  .time-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .time-group {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex: 1;
-  }
-  .time-group label {
-    flex: 0 0 auto;
-    margin: 0;
-  }
-  #start,
-  #end {
-    width: 90px;
-    padding: 6px;
-    font-size: 14px;
-  }
+  /* Compact time inputs */
+  .time-row { display:flex; justify-content:space-between; gap:12px; }
+  .time-group { display:flex; align-items:center; gap:6px; flex:1; }
+  .time-group label { flex:0 0 auto; margin:0; }
+  #start, #end { width: 100%; max-width: 120px; padding: 6px; font-size: 14px; }
+
+  /* สถานะห้อง */
+  #room-status { margin-top:6px }
 </style>
+
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
@@ -90,11 +80,12 @@
   <legend>เลือกห้องและวันเวลา</legend>
   <label>ห้อง</label>
   <select id="room"><option value="">(กำลังโหลด...)</option></select>
-  <div class="row">
+  <div id="room-status" class="hint">กำลังโหลดห้อง…</div>
+
+  <div class="row" style="margin-top:8px">
     <div><label>วันที่</label><input type="date" id="date"></div>
   </div>
 
-  <!-- Compact time inputs -->
   <div class="time-row">
     <div class="time-group">
       <label>เวลาเริ่ม</label>
@@ -112,16 +103,24 @@
   <h2>รายการที่จองแล้ว (ตามห้อง/วันที่เลือก)</h2>
   <div class="grid4">
     <div class="card">
-      <h3>เช้า (06:00–11:59)</h3><div id="c-morning" class="count">0 รายการ</div><div id="l-morning" class="muted">— ว่าง —</div>
+      <h3>เช้า (06:00–11:59)</h3>
+      <div id="c-morning" class="count">0 รายการ</div>
+      <div id="l-morning" class="muted">— ว่าง —</div>
     </div>
     <div class="card">
-      <h3>เที่ยง–บ่ายต้น (12:00–14:59)</h3><div id="c-noon" class="count">0 รายการ</div><div id="l-noon" class="muted">— ว่าง —</div>
+      <h3>เที่ยง–บ่ายต้น (12:00–14:59)</h3>
+      <div id="c-noon" class="count">0 รายการ</div>
+      <div id="l-noon" class="muted">— ว่าง —</div>
     </div>
     <div class="card">
-      <h3>บ่าย–เย็น (15:00–18:59)</h3><div id="c-evening" class="count">0 รายการ</div><div id="l-evening" class="muted">— ว่าง —</div>
+      <h3>บ่าย–เย็น (15:00–18:59)</h3>
+      <div id="c-evening" class="count">0 รายการ</div>
+      <div id="l-evening" class="muted">— ว่าง —</div>
     </div>
     <div class="card">
-      <h3>ค่ำ (19:00–23:59)</h3><div id="c-night" class="count">0 รายการ</div><div id="l-night" class="muted">— ว่าง —</div>
+      <h3>ค่ำ (19:00–23:59)</h3>
+      <div id="c-night" class="count">0 รายการ</div>
+      <div id="l-night" class="muted">— ว่าง —</div>
     </div>
   </div>
   <p class="muted">แสดงเฉพาะห้องและวันที่ที่เลือก • อัปเดตอัตโนมัติทุก 15 วินาที</p>
@@ -150,7 +149,244 @@
 </div>
 
 <script>
-/* your JS unchanged */
+/* ===== CONFIG ===== */
+const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
+const LIFF_ID = '2008386695-b1ykgdPk';
+
+/* ===== GLOBAL ===== */
+let lineUserId = '';
+let refreshTimer = null;
+const REFRESH_MS = 15000;
+
+const $ = (id)=>document.getElementById(id);
+const log = (t)=>{ try{ if(new URLSearchParams(location.search).get('debug')!=='1') return; }catch(_){} const el=$('debug'); if(el) el.textContent += t+'\n'; };
+
+/* ===== Popup ===== */
+function showPopup(msg){$('popup-msg').textContent=msg;$('popup').classList.add('show');}
+function hidePopup(){$('popup').classList.remove('show');}
+document.addEventListener('click',e=>{if(['popup-ok','popup-backdrop'].includes(e.target.id))hidePopup();});
+
+/* ===== API helper ===== */
+async function api(path,opt={}){
+  const method=(opt.method||'GET').toUpperCase();
+  const bust=(method==='GET' && !opt.nobust) ? '' : (path.includes('?')?'&':'?')+'v='+Date.now();
+  const url=API+path+bust;
+
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(new DOMException('Timeout','AbortError')), 10000);
+
+  try{
+    const res=await fetch(url,{
+      method,
+      body:opt.body||undefined,
+      mode:'cors',
+      cache:'no-store',
+      signal:ctrl.signal
+    });
+    const text=await res.text();
+
+    if(text.trim().startsWith('<')) throw new Error('ปลายทางส่ง HTML (อาจยังไม่ได้ Deploy / สิทธิ์ไม่ถูก)');
+    let data;
+    try{ data = JSON.parse(text); } catch{ throw new Error('ได้ข้อมูลไม่ใช่ JSON: '+text.slice(0,160)); }
+    if(!res.ok) throw new Error('HTTP '+res.status+': '+text.slice(0,160));
+    return data;
+  } finally { clearTimeout(timer); }
+}
+
+/* ===== Cache ง่าย ๆ ===== */
+async function cachedJSON(key, fetcher, ttl){
+  try{
+    const now=Date.now(), hit=localStorage.getItem(key);
+    if(hit){
+      const o=JSON.parse(hit);
+      if(o.t+ttl>now) return o.data;
+    }
+    const d=await fetcher();
+    localStorage.setItem(key, JSON.stringify({t:Date.now(), data:d}));
+    return d;
+  }catch(e){ return fetcher(); }
+}
+
+/* ===== Dashboard renderer ===== */
+function renderDash(booked){
+  const buckets={morning:[],noon:[],evening:[],night:[]};
+  (booked||[]).forEach(b=>{
+    const h=parseInt((b.start||'00:00').split(':')[0],10);
+    if(h>=6 && h<12) buckets.morning.push(b);
+    else if(h>=12 && h<15) buckets.noon.push(b);
+    else if(h>=15 && h<19) buckets.evening.push(b);
+    else if(h>=19) buckets.night.push(b);
+  });
+  const fill=(key,c,l)=>{
+    const arr=buckets[key];
+    $(c).textContent=(arr.length||0)+' รายการ';
+    const box=$(l); box.innerHTML='';
+    if(!arr.length){ box.innerHTML='<div class="muted">— ว่าง —</div>'; return; }
+    arr.sort((a,b)=>(a.start||'').localeCompare(b.start||''));
+    arr.forEach(x=>{
+      const d=document.createElement('div'); d.className='item';
+      d.textContent = `[${x.start}-${x.end}] ${x.by||x.purpose||''}`;
+      box.appendChild(d);
+    });
+  };
+  fill('morning','c-morning','l-morning');
+  fill('noon','c-noon','l-noon');
+  fill('evening','c-evening','l-evening');
+  fill('night','c-night','l-night');
+}
+
+/* ===== Date/Time defaults ===== */
+const pad=n=>String(n).padStart(2,'0');
+function roundToStep(min, step){ return Math.ceil(min/step)*step; } // ปัดขึ้นเป็น step
+function setDefaultDateAndTime(){
+  const now=new Date(); const today=now.toISOString().slice(0,10);
+  $('date').value=today; $('date').min=today;
+
+  const STEP_MIN = 30;
+  let mNow = now.getHours()*60 + now.getMinutes();
+  let mStart = roundToStep(mNow, STEP_MIN);
+  let sh=Math.floor(mStart/60), sm=mStart%60;
+  let eh=Math.min(sh+1,23), em=sm;
+
+  $('start').value = `${pad(sh)}:${pad(sm)}`;
+  $('end').value   = `${pad(eh)}:${pad(em)}`;
+}
+function autoAdjustEnd(){
+  const s=$('start').value; if(!s) return;
+  const [h,m]=s.split(':').map(Number);
+  const end = `${pad(Math.min(h+1,23))}:${pad(m)}`;
+  if($('end').value <= s) $('end').value = end;
+}
+
+/* ===== LIFF (relaxed) ===== */
+async function initLIFF(){
+  try{
+    await liff.init({liffId:LIFF_ID});
+    if(liff.isLoggedIn()){
+      const p=await liff.getProfile();
+      lineUserId=p.userId||'';
+      if(!$('by').value) $('by').value=p.displayName||'';
+      log('LIFF OK');
+    }else{
+      lineUserId='GUEST-'+Math.random().toString(36).slice(2,8);
+      log('LIFF guest');
+    }
+  }catch(e){
+    lineUserId='GUEST-'+Math.random().toString(36).slice(2,8);
+    log('LIFF init fail -> guest: '+e.message);
+  }
+}
+
+/* ===== โหลดห้อง + สถานะใต้ select ===== */
+async function loadRoomsAndInitDash(){
+  const sel=$('room'); const status=$('room-status');
+  const setStatus=(m,bad=false)=>{ if(status){ status.textContent=m; status.style.color=bad?'#b00020':'#666'; } };
+
+  setStatus('กำลังตรวจสุขภาพ API…');
+  try{
+    await api('?action=health',{nobust:false});
+  }catch(e){
+    sel.innerHTML='<option value="">(โหลดห้องไม่สำเร็จ)</option>';
+    setStatus('❌ เรียก API ไม่ได้: '+e.message, true);
+    status.insertAdjacentHTML('beforeend',' <button id="retry-room" type="button">ลองใหม่</button>');
+    document.getElementById('retry-room').onclick=loadRoomsAndInitDash;
+    return;
+  }
+
+  setStatus('กำลังโหลดรายชื่อห้อง…');
+  try{
+    const d=await cachedJSON('rooms_v1', ()=>api('?action=rooms'), 120000);
+    if(!d || d.ok!==true){ sel.innerHTML='<option value="">(โหลดห้องไม่สำเร็จ)</option>'; setStatus('❌ API not ok', true); return; }
+    const rooms = Array.isArray(d.rooms)? d.rooms : [];
+    if(!rooms.length){ sel.innerHTML='<option value="">(ยังไม่มีห้องในชีต "Rooms")</option>'; setStatus('ยังไม่มีข้อมูลห้อง (เริ่มที่แถว 2)', true); return; }
+
+    sel.innerHTML='';
+    rooms.forEach(r=>{
+      const o=document.createElement('option');
+      o.value=r.room_id;
+      o.textContent=r.room_name||r.name||r.room_id;
+      sel.appendChild(o);
+    });
+    if(!sel.value) sel.value=rooms[0].room_id;
+    setStatus('✅ โหลดห้องสำเร็จ');
+
+    await checkSlots();      // เรียกครั้งแรก
+    startAutoRefresh();      // เริ่มรีเฟรชอัตโนมัติ
+  }catch(e){
+    sel.innerHTML='<option value="">(โหลดห้องไม่สำเร็จ)</option>';
+    setStatus('❌ โหลดห้องไม่สำเร็จ: '+e.message, true);
+    status.insertAdjacentHTML('beforeend',' <button id="retry-room" type="button">ลองใหม่</button>');
+    document.getElementById('retry-room').onclick=loadRoomsAndInitDash;
+  }
+}
+
+/* ===== โหลดคิว (บังคับ fresh ทุกครั้ง) ===== */
+async function checkSlots(){
+  const r=$('room').value, dt=$('date').value;
+  if(!r||!dt) return;
+  const url=`?action=slots&room_id=${encodeURIComponent(r)}&date=${encodeURIComponent(dt)}&t=${Date.now()}`;
+  try{
+    const d=await api(url,{nobust:false});
+    const booked=(d && d.booked) ? d.booked : [];
+    renderDash(booked);
+  }catch(e){
+    log('slots error: '+e.message);
+  }
+}
+
+/* ===== Auto refresh dashboard ===== */
+function startAutoRefresh(){ stopAutoRefresh(); refreshTimer=setInterval(checkSlots, REFRESH_MS); }
+function stopAutoRefresh(){ if(refreshTimer){ clearInterval(refreshTimer); refreshTimer=null; } }
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) stopAutoRefresh(); else startAutoRefresh(); });
+
+/* ===== Booking ===== */
+async function book(){
+  const p={
+    room_id:$('room').value,
+    date:$('date').value,
+    start:$('start').value,
+    end:$('end').value,
+    book_by:$('by').value,
+    purpose:$('purpose').value,
+    line_user:lineUserId
+  };
+  const msg=$('msg');
+  if(!p.room_id||!p.date||!p.start||!p.end){ msg.textContent='❌ กรอกข้อมูลให้ครบ'; return; }
+  if(p.end<=p.start){ showPopup('ช่วงเวลาสิ้นสุดต้องช้ากว่าเวลาเริ่ม'); return; }
+  msg.textContent='กำลังบันทึก...';
+  try{
+    const form=new URLSearchParams(); form.set('payload', JSON.stringify(p));
+    const res=await api('',{method:'POST', body:form});
+    if(!res.ok){
+      const err=(res.error||res.reason||'').toUpperCase();
+      if(err.includes('TIME_CONFLICT')){ showPopup('ช่วงเวลานี้ถูกจองแล้ว'); msg.textContent='❌ เวลาซ้ำ'; return; }
+      showPopup('จองไม่สำเร็จ: '+(res.error||res.reason||'เกิดข้อผิดพลาด'));
+      msg.textContent='❌ ไม่สำเร็จ'; return;
+    }
+    msg.textContent='✅ จองสำเร็จ! Ref: '+(res.ref||'');
+    await checkSlots(); // รีเฟรชแดชบอร์ดทันที
+  }catch(e){
+    showPopup('เครือข่ายขัดข้อง: '+e.message);
+    msg.textContent='❌ ไม่สำเร็จ: '+e.message;
+  }
+}
+
+/* ===== STARTUP ===== */
+document.addEventListener('DOMContentLoaded', async ()=>{
+  // ตั้งค่าช่องเวลา
+  setDefaultDateAndTime();
+  const startEl=$('start'), endEl=$('end');
+  if(startEl){ startEl.step='1800'; startEl.min='06:00'; startEl.max='23:59'; }
+  if(endEl){   endEl.step='1800';   endEl.min='06:00';   endEl.max='23:59'; }
+
+  await initLIFF();
+  await loadRoomsAndInitDash();
+
+  $('room').addEventListener('change', ()=>{ checkSlots(); startAutoRefresh(); });
+  $('date').addEventListener('change', ()=>{ checkSlots(); startAutoRefresh(); });
+  $('start').addEventListener('change', autoAdjustEnd);
+  $('book').onclick=book;
+});
 </script>
 </body>
 </html>
