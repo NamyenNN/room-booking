@@ -60,7 +60,7 @@
   </div>
   <div class="row">
     <div><label>เวลาสิ้นสุด</label><input type="time" id="end"></div>
-    <div><label>&nbsp;</label><button id="check">เช็กคิว</button></div>
+    <div><label>&nbsp;</label><button id="check" type="button">เช็กคิว</button></div>
   </div>
 </fieldset>
 
@@ -69,16 +69,16 @@
   <h2>รายการที่จองแล้ว (ตามห้อง/วันที่เลือก)</h2>
   <div class="grid4">
     <div class="card">
-      <h3>เช้า (06:00–11:59)</h3><div id="c-morning" class="count"></div><div id="l-morning"></div>
+      <h3>เช้า (06:00–11:59)</h3><div id="c-morning" class="count">0 รายการ</div><div id="l-morning" class="muted">— ว่าง —</div>
     </div>
     <div class="card">
-      <h3>เที่ยง–บ่ายต้น (12:00–14:59)</h3><div id="c-noon" class="count"></div><div id="l-noon"></div>
+      <h3>เที่ยง–บ่ายต้น (12:00–14:59)</h3><div id="c-noon" class="count">0 รายการ</div><div id="l-noon" class="muted">— ว่าง —</div>
     </div>
     <div class="card">
-      <h3>บ่าย–เย็น (15:00–18:59)</h3><div id="c-evening" class="count"></div><div id="l-evening"></div>
+      <h3>บ่าย–เย็น (15:00–18:59)</h3><div id="c-evening" class="count">0 รายการ</div><div id="l-evening" class="muted">— ว่าง —</div>
     </div>
     <div class="card">
-      <h3>ค่ำ (19:00–23:59)</h3><div id="c-night" class="count"></div><div id="l-night"></div>
+      <h3>ค่ำ (19:00–23:59)</h3><div id="c-night" class="count">0 รายการ</div><div id="l-night" class="muted">— ว่าง —</div>
     </div>
   </div>
   <p class="muted">แสดงเฉพาะห้องและวันที่ที่เลือก</p>
@@ -112,7 +112,6 @@ const LIFF_ID = '2008386695-b1ykgdPk';
 
 let lineUserId = '';
 const $ = (id)=>document.getElementById(id);
-// ✅ แก้ตรงนี้ — ใช้ \n แทนบรรทัดใหม่
 const log = (t)=>{ try{ if(new URLSearchParams(location.search).get('debug')!=='1') return; }catch(_){} const el=$('debug'); if(el) el.textContent += t+'\n'; };
 
 function showPopup(msg){$('popup-msg').textContent=msg;$('popup').classList.add('show');}
@@ -124,9 +123,9 @@ async function api(path,opt={}){
   const bust=(method==='GET')?'':(path.includes('?')?'&':'?')+'v='+Date.now();
   const url=API+path+bust;
   const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),8000);
-  const res=await fetch(url,{method,body:opt.body||undefined,mode:'cors',cache:'no-store',signal:ctrl.signal});
+  const res=await fetch(url,{method,body:opt.body||undefined,mode:'cors',cache:method==='GET'?'default':'no-store',signal:ctrl.signal});
   clearTimeout(timer);
-  const txt=await res.text();log('HTTP '+res.status+': '+txt.slice(0,100));
+  const txt=await res.text();log('HTTP '+res.status+': '+txt.slice(0,120));
   if(!res.ok)throw new Error(txt);
   return JSON.parse(txt);
 }
@@ -143,15 +142,16 @@ async function cachedJSON(key,fetcher,ttl){
 function renderDash(booked){
   const buckets={morning:[],noon:[],evening:[],night:[]};
   (booked||[]).forEach(b=>{
-    const h=parseInt((b.start||'00:00').split(':')[0]);
+    const h=parseInt((b.start||'00:00').split(':')[0],10);
     if(h>=6&&h<12)buckets.morning.push(b);
     else if(h>=12&&h<15)buckets.noon.push(b);
     else if(h>=15&&h<19)buckets.evening.push(b);
     else if(h>=19)buckets.night.push(b);
   });
   const fill=(key,c,l)=>{
-    const arr=buckets[key];$(c).textContent=arr.length+' รายการ';const box=$(l);
-    box.innerHTML='';if(!arr.length){box.innerHTML='<div class="muted">— ว่าง —</div>';return;}
+    const arr=buckets[key];$(c).textContent=(arr.length||0)+' รายการ';const box=$(l);
+    box.innerHTML='';
+    if(!arr.length){ box.innerHTML='<div class="muted">— ว่าง —</div>'; return; }
     arr.sort((a,b)=>(a.start||'').localeCompare(b.start||''));arr.forEach(x=>{
       const d=document.createElement('div');d.className='item';
       d.textContent=`[${x.start}-${x.end}] ${x.by||x.purpose||''}`;box.appendChild(d);
@@ -168,7 +168,8 @@ const pad=n=>String(n).padStart(2,'0');
 function setDefaultDateAndTime(){
   const now=new Date();const today=now.toISOString().slice(0,10);
   $('date').value=today;$('date').min=today;
-  let h=now.getHours(),m=now.getMinutes();if(m>0&&m<=30)m=30;else if(m>30){m=0;h=(h+1)%24;}
+  let h=now.getHours(),m=now.getMinutes();
+  if(m>0&&m<=30)m=30; else if(m>30){m=0;h=(h+1)%24;}
   $('start').value=`${pad(h)}:${pad(m)}`;$('end').value=`${pad((h+1)%24)}:${pad(m)}`;
 }
 function autoAdjustEnd(){const s=$('start').value;if(!s)return;const [h,m]=s.split(':').map(Number);$('end').value=`${pad((h+1)%24)}:${pad(m)}`;}
@@ -183,22 +184,38 @@ async function initLIFF(){
   }catch(e){lineUserId='GUEST-'+Math.random().toString(36).slice(2,8);}
 }
 
-// load rooms
-async function loadRooms(){
+// load rooms (เลือกห้องแรกอัตโนมัติ และเรียก dashboard ให้เอง)
+async function loadRoomsAndInitDash(){
   const sel=$('room');
   try{
     const d=await cachedJSON('rooms',()=>api('?action=rooms'),120000);
-    const rooms=(d.rooms||[]);sel.innerHTML='';
-    rooms.forEach(r=>{const o=document.createElement('option');o.value=r.room_id;o.textContent=r.room_name||r.name||r.room_id;sel.appendChild(o);});
-  }catch(e){sel.innerHTML='<option value="">(โหลดห้องไม่สำเร็จ)</option>';log(e);}
+    const rooms=(d.rooms||[]);
+    sel.innerHTML='';
+    rooms.forEach(r=>{
+      const o=document.createElement('option');
+      o.value=r.room_id;
+      o.textContent=r.room_name||r.name||r.room_id;
+      sel.appendChild(o);
+    });
+    // ถ้ายังไม่เลือกห้อง ให้เลือกอันแรก
+    if(!sel.value && rooms.length){ sel.value = rooms[0].room_id; }
+    // เรียก dashboard ครั้งแรกทันที
+    if(sel.value && $('date').value){ await checkSlots(); }
+  }catch(e){
+    sel.innerHTML='<option value="">(โหลดห้องไม่สำเร็จ)</option>';
+    log('rooms error: '+e.message);
+  }
 }
 
-// check slots
+// check slots (อัปเดต dashboard)
 async function checkSlots(){
-  const r=$('room').value,dt=$('date').value;if(!r||!dt){alert('กรุณาเลือกห้องและวันที่');return;}
+  const r=$('room').value,dt=$('date').value;
+  if(!r||!dt){ return; }
   const key=`slots_${r}_${dt}`;
-  const d=await cachedJSON(key,()=>api(`?action=slots&room_id=${r}&date=${dt}`),30000);
-  renderDash((d.booked)||[]);
+  const d=await cachedJSON(key,()=>api(`?action=slots&room_id=${encodeURIComponent(r)}&date=${encodeURIComponent(dt)}`),30000);
+  // รองรับทั้งแบบ {ok:true, booked:[]} และแบบ {booked:[]}
+  const booked = (d && (d.booked || (d.ok && d.booked))) ? d.booked : (d.booked||[]);
+  renderDash(booked||[]);
 }
 
 // book
@@ -206,23 +223,33 @@ async function book(){
   const p={room_id:$('room').value,date:$('date').value,start:$('start').value,end:$('end').value,book_by:$('by').value,purpose:$('purpose').value,line_user:lineUserId};
   const msg=$('msg');
   if(!p.room_id||!p.date||!p.start||!p.end){msg.textContent='❌ กรอกข้อมูลให้ครบ';return;}
+  if(p.end<=p.start){showPopup('ช่วงเวลาสิ้นสุดต้องช้ากว่าเวลาเริ่ม');return;}
   msg.textContent='กำลังบันทึก...';
   try{
     const form=new URLSearchParams();form.set('payload',JSON.stringify(p));
     const res=await api('',{method:'POST',body:form});
     if(!res.ok){
-      const err=(res.error||'').toUpperCase();
+      const err=(res.error||res.reason||'').toUpperCase();
       if(err.includes('TIME_CONFLICT')){showPopup('ช่วงเวลานี้ถูกจองแล้ว');msg.textContent='❌ เวลาซ้ำ';return;}
-      showPopup('จองไม่สำเร็จ: '+(res.error||'เกิดข้อผิดพลาด'));msg.textContent='❌ ไม่สำเร็จ';return;
+      showPopup('จองไม่สำเร็จ: '+(res.error||res.reason||'เกิดข้อผิดพลาด'));msg.textContent='❌ ไม่สำเร็จ';return;
     }
-    msg.textContent='✅ จองสำเร็จ! Ref: '+(res.ref||'');checkSlots();
+    msg.textContent='✅ จองสำเร็จ! Ref: '+(res.ref||'');
+    await checkSlots(); // รีเฟรช dashboard
   }catch(e){showPopup('เครือข่ายขัดข้อง');msg.textContent='❌ ไม่สำเร็จ: '+e.message;}
 }
 
 document.addEventListener('DOMContentLoaded',async()=>{
-  loadRooms();await initLIFF();setDefaultDateAndTime();
-  $('start').addEventListener('change',autoAdjustEnd);
-  $('check').onclick=checkSlots;
+  setDefaultDateAndTime();         // ตั้งค่าวัน/เวลา ก่อน เพื่อให้ checkSlots ใช้ได้เลย
+  await initLIFF();                // liff relaxed
+  await loadRoomsAndInitDash();    // โหลดห้อง + เรียก dashboard ครั้งแรกอัตโนมัติ
+
+  // เปลี่ยนห้อง/วันที่ → อัปเดต Dashboard อัตโนมัติ
+  $('room').addEventListener('change', checkSlots);
+  $('date').addEventListener('change', checkSlots);
+
+  // ปรับเวลาอัตโนมัติ + ปุ่มต่าง ๆ
+  $('start').addEventListener('change', autoAdjustEnd);
+  $('check').onclick=checkSlots;   // ปุ่มเช็กคิว (เผื่ออยากกดเอง)
   $('book').onclick=book;
 });
 </script>
