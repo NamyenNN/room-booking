@@ -8,7 +8,8 @@
 <link rel="preconnect" href="https://static.line-scdn.net" crossorigin>
 <link rel="dns-prefetch" href="https://static.line-scdn.net">
 <title>จองห้องประชุม</title>
-<link rel="icon" type="image/png" href="LOGO CS.png">
+<!-- ใช้ไฟล์ LOGOCS.png เป็น favicon -->
+<link rel="icon" type="image/png" href="https://namyennn.github.io/room-booking/LOGOCS.png?v=1">
 <style>
   body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:720px;margin:auto;background:#fafafa}
   fieldset{border:1px solid #ddd;padding:12px;margin-bottom:16px;border-radius:12px;background:#fff}
@@ -57,9 +58,8 @@
 
 <!-- โลโก้มุมซ้าย + หัวข้อ -->
 <header class="brand">
-  <!-- ถ้าไฟล์คุณชื่อ IMG_0154.png ให้เปลี่ยน src เป็น IMG_0154.png -->
   <a href="booking.html" aria-label="หน้าแรกการจอง">
-    <img src="logo-cs.png" alt="โลโก้ CS">
+    <img src="https://namyennn.github.io/room-booking/LOGOCS.png?v=1" alt="โลโก้ CS">
   </a>
   <h1>จองห้องประชุม</h1>
 </header>
@@ -271,7 +271,6 @@ document.addEventListener('DOMContentLoaded',async()=>{
   await initLIFF();
   await loadRoomsAndInitDash();
 
-  // เปลี่ยนห้อง/วันที่ → รีเฟรชทันที + รีสตาร์ท interval
   $('room').addEventListener('change', ()=>{ checkSlots(); startAutoRefresh(); });
   $('date').addEventListener('change', ()=>{ checkSlots(); startAutoRefresh(); });
 
