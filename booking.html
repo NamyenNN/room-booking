@@ -35,7 +35,7 @@
   .item{font-size:13px;border-top:1px dashed #eee;padding:6px 0}
   .muted{color:#666;font-size:12px}
 
-  /* ช่องเวลา */
+  /* ช่องเวลา (คอมแพ็ค) */
   .time-row {display:flex;justify-content:space-between;gap:12px;}
   .time-group {display:flex;align-items:center;gap:6px;flex:1;}
   .time-group label {margin:0;}
@@ -50,20 +50,28 @@
     background:#fff; border-radius:14px; padding:18px; width:min(360px,90vw);
     box-shadow: 0 10px 30px rgba(0,0,0,.2); border:1px solid #eee;
   }
+  #popup-card h3{ margin:0 0 8px }
+  #popup-card p{ margin:0 0 14px; color:#444 }
+  #popup-card button{
+    width:100%; padding:10px 14px; border:1px solid #ccc;border-radius:10px;cursor:pointer;
+    background:#f6f6f6;
+  }
 </style>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
 
 <header class="brand">
-  <a href="booking.html"><img src="https://namyennn.github.io/room-booking/LOGOCS.png?v=1" alt="LOGO"></a>
+  <a href="booking.html" aria-label="หน้าแรกการจอง">
+    <img src="https://namyennn.github.io/room-booking/LOGOCS.png?v=1" alt="LOGO">
+  </a>
   <h1>จองห้องประชุม</h1>
 </header>
 
 <fieldset>
   <legend>เลือกห้องและวันเวลา</legend>
   <label>ห้อง</label>
-  <select id="room"><option value="">(กำลังโหลด...)</option></select>
+  <select id="room"></select> <!-- เอา option (กำลังโหลด...) ออก -->
 
   <div class="row" style="margin-top:8px">
     <div><label>วันที่</label><input type="date" id="date"></div>
@@ -77,10 +85,10 @@
 <section id="dash" class="dash">
   <h2>รายการที่จองแล้ว (ตามห้อง/วันที่เลือก)</h2>
   <div class="grid4">
-    <div class="card"><h3>เช้า</h3><div id="c-morning" class="count">0 รายการ</div><div id="l-morning" class="muted">— ว่าง —</div></div>
-    <div class="card"><h3>เที่ยง</h3><div id="c-noon" class="count">0 รายการ</div><div id="l-noon" class="muted">— ว่าง —</div></div>
-    <div class="card"><h3>บ่าย</h3><div id="c-evening" class="count">0 รายการ</div><div id="l-evening" class="muted">— ว่าง —</div></div>
-    <div class="card"><h3>ค่ำ</h3><div id="c-night" class="count">0 รายการ</div><div id="l-night" class="muted">— ว่าง —</div></div>
+    <div class="card"><h3>เช้า (06:00–11:59)</h3><div id="c-morning" class="count">0 รายการ</div><div id="l-morning" class="muted">— ว่าง —</div></div>
+    <div class="card"><h3>เที่ยง–บ่ายต้น (12:00–14:59)</h3><div id="c-noon" class="count">0 รายการ</div><div id="l-noon" class="muted">— ว่าง —</div></div>
+    <div class="card"><h3>บ่าย–เย็น (15:00–18:59)</h3><div id="c-evening" class="count">0 รายการ</div><div id="l-evening" class="muted">— ว่าง —</div></div>
+    <div class="card"><h3>ค่ำ (19:00–23:59)</h3><div id="c-night" class="count">0 รายการ</div><div id="l-night" class="muted">— ว่าง —</div></div>
   </div>
 </section>
 
@@ -96,18 +104,210 @@
 
 <details><summary>DEBUG</summary><pre id="debug"></pre></details>
 
-<div id="popup">
+<!-- Popup -->
+<div id="popup" role="dialog" aria-modal="true" aria-labelledby="popup-title">
   <div id="popup-backdrop"></div>
   <div id="popup-card">
     <h3 id="popup-title">ไม่สามารถจองได้</h3>
     <p id="popup-msg">ช่วงเวลานี้ถูกจองแล้ว กรุณาเลือกเวลาอื่น</p>
-    <button id="popup-ok">OK</button>
+    <button id="popup-ok" type="button">OK</button>
   </div>
 </div>
 
 <script>
-const API='https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
-const LIFF_ID='2008386695-b1ykgdPk';
-let lineUserId=''; let refreshTimer=null; const REFRESH_MS=15000;
-const $=id=>document.getElementById(id);
-const log=t=>{try{if(new URLSearchParams(location.search).get('debug')!=='1
+/* ===== CONFIG ===== */
+const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
+const LIFF_ID = '2008386695-b1ykgdPk';
+const REFRESH_MS = 15000;
+
+/* ===== Helpers ===== */
+const $ = (id) => document.getElementById(id);
+const pad = (n) => String(n).padStart(2,'0');
+const popup = {
+  show(msg){ $('popup-msg').textContent = msg; $('popup').classList.add('show'); },
+  hide(){ $('popup').classList.remove('show'); }
+};
+document.addEventListener('click', e=>{
+  if(e.target && (e.target.id==='popup-ok' || e.target.id==='popup-backdrop')) popup.hide();
+});
+
+/* fetch with timeout + no noisy UI */
+async function api(path, opt={}){
+  const url = API + path + (path.includes('?')?'&':'?') + 'v=' + Date.now();
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), 9000);
+  try{
+    const res = await fetch(url, { method: opt.method||'GET', body: opt.body||undefined, cache: 'no-store', signal: ctrl.signal });
+    const raw = await res.text();
+    if(!res.ok) throw new Error(raw||('HTTP '+res.status));
+    return JSON.parse(raw);
+  }finally{ clearTimeout(t); }
+}
+
+/* ===== Time defaults ===== */
+function setDefaultDateAndTime(){
+  const now = new Date();
+  const today = now.toISOString().slice(0,10);
+  $('date').value = today;
+  $('date').min = today;
+
+  let h = now.getHours();
+  let m = now.getMinutes();
+  if(m>0 && m<=30) m=30; else if(m>30){ m=0; h=(h+1)%24; }
+
+  $('start').value = `${pad(h)}:${pad(m)}`;
+  $('end').value   = `${pad((h+1)%24)}:${pad(m)}`;
+}
+function autoAdjustEnd(){
+  const s = $('start').value; if(!s) return;
+  const [h,m] = s.split(':').map(Number);
+  $('end').value = `${pad((h+1)%24)}:${pad(m)}`;
+}
+
+/* ===== LIFF (relaxed) ===== */
+let lineUserId = '';
+async function initLIFF(){
+  try{
+    await liff.init({ liffId: LIFF_ID });
+    if(liff.isLoggedIn()){
+      const p = await liff.getProfile();
+      lineUserId = p.userId || '';
+      if(!$('by').value) $('by').value = p.displayName || '';
+    }else{
+      lineUserId = 'GUEST-' + Math.random().toString(36).slice(2,8);
+    }
+  }catch{
+    lineUserId = 'GUEST-' + Math.random().toString(36).slice(2,8);
+  }
+}
+
+/* ===== Rooms + Dashboard ===== */
+let refreshTimer = null;
+
+function renderDash(booked){
+  const buckets = { morning:[], noon:[], evening:[], night:[] };
+  (booked||[]).forEach(b=>{
+    const h = parseInt((b.start||'00:00').split(':')[0],10);
+    if(h>=6 && h<12) buckets.morning.push(b);
+    else if(h>=12 && h<15) buckets.noon.push(b);
+    else if(h>=15 && h<19) buckets.evening.push(b);
+    else if(h>=19) buckets.night.push(b);
+  });
+  const fill = (arr, cid, lid)=>{
+    $(cid).textContent = (arr.length||0) + ' รายการ';
+    $(lid).innerHTML = arr.length
+      ? arr.sort((a,b)=> (a.start||'').localeCompare(b.start||''))
+          .map(x=>`<div class="item">[${x.start}-${x.end}] ${x.by||x.purpose||''}</div>`).join('')
+      : '<div class="muted">— ว่าง —</div>';
+  };
+  fill(buckets.morning, 'c-morning', 'l-morning');
+  fill(buckets.noon,    'c-noon',    'l-noon');
+  fill(buckets.evening, 'c-evening', 'l-evening');
+  fill(buckets.night,   'c-night',   'l-night');
+}
+
+async function checkSlots(){
+  const r = $('room').value, dt = $('date').value;
+  if(!r || !dt) return;
+  try{
+    const d = await api(`?action=slots&room_id=${encodeURIComponent(r)}&date=${encodeURIComponent(dt)}`);
+    renderDash((d && d.booked) || []);
+  }catch(e){
+    // เงียบ ๆ ถ้า API ช้า/ล่ม — ไม่กวนหน้าเพจ
+  }
+}
+
+function startAutoRefresh(){ stopAutoRefresh(); refreshTimer = setInterval(checkSlots, REFRESH_MS); }
+function stopAutoRefresh(){ if(refreshTimer){ clearInterval(refreshTimer); refreshTimer=null; } }
+
+async function loadRoomsAndInitDash(){
+  const sel = $('room');
+  sel.innerHTML = ''; // ไม่ใส่ "(กำลังโหลด...)" อีกต่อไป
+
+  try{
+    const d = await api('?action=rooms');
+    const rooms = (d && d.rooms) || [];
+    if(rooms.length){
+      sel.innerHTML = rooms.map(r=>`<option value="${r.room_id}">${r.room_name||r.name||r.room_id}</option>`).join('');
+      if(!sel.value) sel.value = rooms[0].room_id;
+      await checkSlots();
+      startAutoRefresh();
+    }else{
+      sel.innerHTML = '<option value="">(ยังไม่มีรายการห้อง)</option>';
+    }
+  }catch(e){
+    // ถ้าโหลดห้องไม่สำเร็จ ให้โชว์ตัวเลือกว่างเฉย ๆ
+    sel.innerHTML = '<option value="">(โหลดห้องไม่สำเร็จ)</option>';
+  }
+}
+
+/* ===== Book ===== */
+async function book(){
+  const p = {
+    room_id: $('room').value,
+    date: $('date').value,
+    start: $('start').value,
+    end: $('end').value,
+    book_by: $('by').value,
+    purpose: $('purpose').value,
+    line_user: lineUserId
+  };
+  const msg = $('msg');
+
+  if(!p.room_id || !p.date || !p.start || !p.end){
+    msg.textContent = '❌ กรอกข้อมูลให้ครบ'; return;
+  }
+  if(p.end <= p.start){
+    popup.show('เวลาสิ้นสุดต้องมากกว่าเวลาเริ่ม'); return;
+  }
+  if(!p.line_user){
+    msg.textContent='❌ ต้องเปิดผ่าน LINE (LIFF) เพื่อยืนยันตัวตนผู้จอง'; return;
+  }
+
+  msg.textContent = 'กำลังบันทึก...';
+  try{
+    const body = new URLSearchParams(); body.set('payload', JSON.stringify(p));
+    const res = await api('', { method:'POST', body });
+    if(!res.ok){
+      const reason = (res.reason||res.error||'').toString().toUpperCase();
+      if(reason.includes('TIME_CONFLICT')){
+        popup.show('ช่วงเวลานี้ถูกจองแล้ว กรุณาเลือกเวลาอื่น');
+        msg.textContent = '❌ เวลาซ้ำ';
+      }else{
+        popup.show('จองไม่สำเร็จ: '+(res.reason||res.error||''));
+        msg.textContent = '❌ ไม่สำเร็จ';
+      }
+      return;
+    }
+    msg.textContent = '✅ จองสำเร็จ! Ref: ' + (res.ref||'');
+    await checkSlots();
+  }catch(e){
+    popup.show('เครือข่ายขัดข้อง');
+    msg.textContent = '❌ ไม่สำเร็จ';
+  }
+}
+
+/* ===== Bootstrap ===== */
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden) stopAutoRefresh(); else startAutoRefresh();
+});
+
+document.addEventListener('DOMContentLoaded', async ()=>{
+  // ตั้งค่าเวลา/วันที่ก่อนเสมอ เพื่อไม่ให้ช่อง "ว่าง"
+  setDefaultDateAndTime();
+
+  // LIFF แบบเงียบ ๆ (ล้มเหลวก็ guest)
+  await initLIFF();
+
+  // โหลดห้องแบบเงียบ ๆ (ไม่แสดง “กำลังโหลด”)
+  await loadRoomsAndInitDash();
+
+  // bind UI
+  $('start').addEventListener('change', autoAdjustEnd);
+  $('room').addEventListener('change', ()=>{ checkSlots(); startAutoRefresh(); });
+  $('date').addEventListener('change', ()=>{ checkSlots(); startAutoRefresh(); });
+  $('book').addEventListener('click', book);
+});
+</script>
+</body>
+</html>
