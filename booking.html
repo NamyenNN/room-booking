@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://static.line-scdn.net" crossorigin>
 <link rel="dns-prefetch" href="https://static.line-scdn.net">
 <title>จองห้องประชุม</title>
+<link rel="icon" type="image/png" href="logo-cs.png">
 <style>
   body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:720px;margin:auto;background:#fafafa}
   fieldset{border:1px solid #ddd;padding:12px;margin-bottom:16px;border-radius:12px;background:#fff}
@@ -17,6 +18,11 @@
   .hint{font-size:12px;color:#666}
   details{margin-top:14px}
   pre{white-space:pre-wrap}
+
+  /* Brand (โลโก้มุมซ้าย) */
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .brand img{height:50px;width:auto;display:block}
+  .brand h1{margin:0;font-size:28px;line-height:1.1}
 
   /* Popup */
   #popup { position: fixed; inset: 0; display: none; }
@@ -48,7 +54,15 @@
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
-<h1>จองห้องประชุม</h1>
+
+<!-- โลโก้มุมซ้าย + หัวข้อ -->
+<header class="brand">
+  <!-- ถ้าไฟล์คุณชื่อ IMG_0154.png ให้เปลี่ยน src เป็น IMG_0154.png -->
+  <a href="booking.html" aria-label="หน้าแรกการจอง">
+    <img src="logo-cs.png" alt="โลโก้ CS">
+  </a>
+  <h1>จองห้องประชุม</h1>
+</header>
 
 <fieldset>
   <legend>เลือกห้องและวันเวลา</legend>
@@ -60,7 +74,6 @@
   <div class="row">
     <div><label>เวลาเริ่ม</label><input type="time" id="start"></div>
     <div><label>เวลาสิ้นสุด</label><input type="time" id="end"></div>
-    <div><!-- ปุ่มเช็กคิวถูกถอดออก --></div>
   </div>
 </fieldset>
 
@@ -111,8 +124,8 @@ const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe
 const LIFF_ID = '2008386695-b1ykgdPk';
 
 let lineUserId = '';
-let refreshTimer = null;           // ตัวจับ interval dashboard
-const REFRESH_MS = 15000;          // รีเฟรชทุก 15 วินาที
+let refreshTimer = null;
+const REFRESH_MS = 15000;
 
 const $ = (id)=>document.getElementById(id);
 const log = (t)=>{ try{ if(new URLSearchParams(location.search).get('debug')!=='1') return; }catch(_){} const el=$('debug'); if(el) el.textContent += t+'\n'; };
