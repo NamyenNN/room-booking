@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>จองห้องประชุม</title>
 <link rel="icon" type="image/png" href="https://namyennn.github.io/room-booking/LOGOCS.png?v=1">
 
 <style>
-  /* ================= THEME TOKENS ================= */
+  /* ============== THEME TOKENS (Light default) ============== */
   :root{
-    /* Light */
     --bg: #fafafa;
     --text: #0f172a;
     --muted:#64748b;
@@ -19,8 +19,31 @@
     --primary-press:#2563eb;
     --input-bg:#ffffff;
   }
-  body.dark{
-    /* Dark */
+  /* ถ้าเครื่องตั้ง Dark → ใช้ค่าชุด Dark โดยอัตโนมัติ */
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0b1220;
+      --text:#e5e7eb;
+      --muted:#94a3b8;
+      --card:#0f172a;
+      --line:#1f2a44;
+      --primary:#60a5fa;
+      --primary-press:#3b82f6;
+      --input-bg:#0b1220;
+    }
+  }
+  /* บังคับ Light/Dark ด้วยคลาส (เมื่อผู้ใช้เลือกจากปุ่ม) */
+  body.force-light{
+    --bg: #fafafa;
+    --text: #0f172a;
+    --muted:#64748b;
+    --card:#ffffff;
+    --line:#e5e7eb;
+    --primary:#3b82f6;
+    --primary-press:#2563eb;
+    --input-bg:#ffffff;
+  }
+  body.force-dark{
     --bg:#0b1220;
     --text:#e5e7eb;
     --muted:#94a3b8;
@@ -31,7 +54,8 @@
     --input-bg:#0b1220;
   }
 
-  /* ================= BASE UI ================= */
+  /* ============== BASE UI ============== */
+  html,body{height:100%}
   body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:720px;margin:auto;background:var(--bg);color:var(--text)}
   fieldset{border:1px solid var(--line);padding:12px;margin-bottom:12px;border-radius:12px;background:var(--card)}
   label{display:block;margin:6px 0 4px;color:var(--muted)}
@@ -95,7 +119,7 @@
   </div>
 </div>
 
-<!-- ============ เนื้อหาเดิมของคุณ ============ -->
+<!-- ===== เนื้อหาของหน้า ===== -->
 <fieldset>
   <legend>เลือกห้องและวันเวลา</legend>
   <label>ห้อง</label>
@@ -129,39 +153,34 @@
 <p id="msg" class="hint"></p>
 <p><a href="my.html">ไปที่ “การจองของฉัน / ยกเลิก”</a></p>
 
-<!-- ================= THEME JS (Auto/Light/Dark) ================= -->
+<!-- ============== THEME JS (Auto/Light/Dark) ============== -->
 <script>
 (function theme3Mode(){
   const KEY = 'theme-pref'; // 'auto' | 'light' | 'dark'
   const sel = document.getElementById('theme-select');
-  const mq = window.matchMedia('(prefers-color-scheme: dark)');
 
-  function apply(mode){
-    const useDark = (mode === 'dark') || (mode === 'auto' && mq.matches);
-    document.body.classList.toggle('dark', useDark);
-  }
-
-  // โหลดค่าเริ่มต้น (ไม่มี -> auto)
+  // ใช้ค่าใน localStorage ถ้ามี ไม่งั้น 'auto'
   let pref = localStorage.getItem(KEY) || 'auto';
-  sel.value = pref; apply(pref);
+  sel.value = pref;
+  apply(pref);
 
-  // เปลี่ยนจาก UI
   sel.addEventListener('change', () => {
     pref = sel.value;
     localStorage.setItem(KEY, pref);
     apply(pref);
   });
 
-  // ถ้าอยู่โหมด Auto ให้ตามเครื่องแบบเรียลไทม์
-  const onChange = () => { if((localStorage.getItem(KEY) || 'auto') === 'auto') apply('auto'); };
-  if (typeof mq.addEventListener === 'function') mq.addEventListener('change', onChange);
-  else if (typeof mq.addListener === 'function') mq.addListener(onChange); // fallback เก่า
+  // ถ้าอยู่ Auto ไม่ต้องทำอะไร — ปล่อยให้ CSS media-query จัดการ
+  function apply(mode){
+    document.body.classList.remove('force-light','force-dark');
+    if(mode === 'light') document.body.classList.add('force-light');
+    if(mode === 'dark')  document.body.classList.add('force-dark');
+  }
 })();
 </script>
 
-<!-- ============ วางสคริปต์เดิมของคุณต่อจากนี้ได้ ============ -->
+<!-- ====== ตัวอย่างสคริปต์เดิม ตั้งค่าเวลาปัจจุบันอัตโนมัติ ====== -->
 <script>
-/* ตัวอย่าง: ตั้งค่าเวลาปัจจุบันอัตโนมัติ (ของเดิมคุณมีอยู่แล้วคงไว้ได้) */
 document.addEventListener('DOMContentLoaded', ()=>{
   const pad = n => String(n).padStart(2,'0');
   const now = new Date(); const today = now.toISOString().slice(0,10);
