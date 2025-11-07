@@ -3,17 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="preconnect" href="https://script.google.com" crossorigin>
-<link rel="dns-prefetch" href="https://script.google.com">
-<link rel="preconnect" href="https://static.line-scdn.net" crossorigin>
-<link rel="dns-prefetch" href="https://static.line-scdn.net">
 <title>จองห้องประชุม</title>
 <link rel="icon" type="image/png" href="https://namyennn.github.io/room-booking/LOGOCS.png?v=1">
 
 <style>
-  /* ==== THEME (แก้ค่านี้ทีเดียวเปลี่ยนสีทั้งเว็บ) ==== */
+  /* ================= THEME TOKENS ================= */
   :root{
-    /* Light (ปกติ) */
+    /* Light */
     --bg: #fafafa;
     --text: #0f172a;
     --muted:#64748b;
@@ -23,8 +19,8 @@
     --primary-press:#2563eb;
     --input-bg:#ffffff;
   }
-  /* Dark (เมื่อ body มี class="dark") */
   body.dark{
+    /* Dark */
     --bg:#0b1220;
     --text:#e5e7eb;
     --muted:#94a3b8;
@@ -35,8 +31,8 @@
     --input-bg:#0b1220;
   }
 
-  /* ==== Base UI ==== */
-  body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:720px;margin:auto;background:var(--bg);color:var(--text);}
+  /* ================= BASE UI ================= */
+  body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:720px;margin:auto;background:var(--bg);color:var(--text)}
   fieldset{border:1px solid var(--line);padding:12px;margin-bottom:12px;border-radius:12px;background:var(--card)}
   label{display:block;margin:6px 0 4px;color:var(--muted)}
   input,select,button,textarea{
@@ -44,24 +40,23 @@
     background:var(--input-bg);color:var(--text);outline:none;
   }
   input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent)}
-  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .hint{font-size:12px;color:var(--muted)}
-  details{margin-top:14px}
-  pre{white-space:pre-wrap}
   a{color:var(--primary)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
-  /* โลโก้มุมซ้าย + ปุ่มธีมมุมขวา */
+  /* header */
   .brand-wrap{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
   .brand{display:flex;align-items:center;gap:10px}
   .brand img{height:50px;width:auto;display:block}
   .brand h1{margin:0;font-size:28px;line-height:1.1}
-  #theme-toggle{
-    width:auto; padding:8px 12px; border-radius:10px; cursor:pointer;
-    background:var(--primary); color:#fff; border:1px solid transparent;
-  }
-  #theme-toggle:active{background:var(--primary-press); transform:translateY(1px)}
 
-  /* Dashboard */
+  /* theme control */
+  .theme-ctrl{display:flex;gap:8px;align-items:center}
+  .theme-ctrl select{
+    width:auto; padding:8px 12px; border-radius:10px; background:var(--input-bg); color:var(--text);
+    border:1px solid var(--line);
+  }
+
+  /* dashboard */
   .dash{margin-top:20px}
   .dash h2{margin:0 0 10px}
   .grid4{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
@@ -72,29 +67,16 @@
   .item{font-size:13px;border-top:1px dashed var(--line);padding:6px 0}
   .muted{color:var(--muted);font-size:12px}
 
-  /* ช่องเวลา (คอมแพ็ค) */
-  .time-row {display:flex;justify-content:space-between;gap:12px;}
-  .time-group {display:flex;align-items:center;gap:6px;flex:1;}
-  .time-group label {margin:0;}
-  #start,#end {width:100%;max-width:120px;padding:6px;font-size:14px;}
-
-  /* Popup (คงเดิม) */
-  #popup { position: fixed; inset: 0; display: none; }
-  #popup.show { display: block; }
-  #popup-backdrop{ position: absolute; inset:0; background: rgba(0,0,0,.35); }
-  #popup-card{
-    position: absolute; left:50%; top:50%; transform: translate(-50%,-50%);
-    background:var(--card); color:var(--text);
-    border-radius:14px; padding:18px; width:min(360px,90vw);
-    box-shadow: 0 10px 30px rgba(0,0,0,.2); border:1px solid var(--line);
-  }
+  /* time inputs */
+  .time-row{display:flex;gap:12px}
+  .time-group{display:flex;align-items:center;gap:6px;flex:1}
+  .time-group label{margin:0}
+  #start,#end{max-width:120px;padding:6px;font-size:14px}
 </style>
-
-<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
 
-<!-- โลโก้มุมซ้าย + ปุ่มสลับธีมมุมขวา -->
+<!-- โลโก้มุมซ้าย + สลับธีม (Auto/Light/Dark) มุมขวา -->
 <div class="brand-wrap">
   <header class="brand">
     <a href="booking.html" aria-label="หน้าแรกการจอง">
@@ -102,9 +84,18 @@
     </a>
     <h1>จองห้องประชุม</h1>
   </header>
-  <button id="theme-toggle" type="button" aria-label="Toggle theme">🌙 Dark</button>
+
+  <div class="theme-ctrl">
+    <label for="theme-select" class="muted">ธีม</label>
+    <select id="theme-select" aria-label="Theme">
+      <option value="auto">Auto (ตามเครื่อง)</option>
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+  </div>
 </div>
 
+<!-- ============ เนื้อหาเดิมของคุณ ============ -->
 <fieldset>
   <legend>เลือกห้องและวันเวลา</legend>
   <label>ห้อง</label>
@@ -138,76 +129,49 @@
 <p id="msg" class="hint"></p>
 <p><a href="my.html">ไปที่ “การจองของฉัน / ยกเลิก”</a></p>
 
-<details><summary>DEBUG</summary><pre id="debug"></pre></details>
-
-<!-- Popup -->
-<div id="popup" role="dialog" aria-modal="true" aria-labelledby="popup-title">
-  <div id="popup-backdrop"></div>
-  <div id="popup-card">
-    <h3 id="popup-title">ไม่สามารถจองได้</h3>
-    <p id="popup-msg">ช่วงเวลานี้ถูกจองแล้ว กรุณาเลือกเวลาอื่น</p>
-    <button id="popup-ok" type="button">OK</button>
-  </div>
-</div>
-
+<!-- ================= THEME JS (Auto/Light/Dark) ================= -->
 <script>
-/* ===== THEME TOGGLER (พร้อมจำค่า) ===== */
-(function themeBoot(){
-  const KEY = 'theme'; // 'light' | 'dark'
-  const btn = document.getElementById('theme-toggle');
+(function theme3Mode(){
+  const KEY = 'theme-pref'; // 'auto' | 'light' | 'dark'
+  const sel = document.getElementById('theme-select');
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
 
   function apply(mode){
-    const dark = mode === 'dark';
-    document.body.classList.toggle('dark', dark);
-    btn.textContent = dark ? '☀️ Light' : '🌙 Dark';
-    btn.setAttribute('aria-pressed', String(dark));
+    const useDark = (mode === 'dark') || (mode === 'auto' && mq.matches);
+    document.body.classList.toggle('dark', useDark);
   }
 
-  // อ่านค่าที่เคยเลือกไว้ > ถ้าไม่มีก็อิงระบบ
-  let mode = localStorage.getItem(KEY);
-  if(!mode){
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    mode = prefersDark ? 'dark' : 'light';
-  }
-  apply(mode);
+  // โหลดค่าเริ่มต้น (ไม่มี -> auto)
+  let pref = localStorage.getItem(KEY) || 'auto';
+  sel.value = pref; apply(pref);
 
-  // คลิกเพื่อสลับ + บันทึก
-  btn.addEventListener('click', () => {
-    mode = (document.body.classList.contains('dark') ? 'light' : 'dark');
-    localStorage.setItem(KEY, mode);
-    apply(mode);
+  // เปลี่ยนจาก UI
+  sel.addEventListener('change', () => {
+    pref = sel.value;
+    localStorage.setItem(KEY, pref);
+    apply(pref);
   });
 
-  // ถ้าผู้ใช้เปลี่ยนธีมระบบระหว่างใช้งาน และยังไม่เคยตั้งเอง ให้ sync อัตโนมัติ
-  const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
-  if(mq && typeof mq.addEventListener === 'function'){
-    mq.addEventListener('change', e => {
-      if(!localStorage.getItem(KEY)){ // sync เฉพาะคนที่ยังไม่ได้บังคับโหมดเอง
-        apply(e.matches ? 'dark' : 'light');
-      }
-    });
-  }
+  // ถ้าอยู่โหมด Auto ให้ตามเครื่องแบบเรียลไทม์
+  const onChange = () => { if((localStorage.getItem(KEY) || 'auto') === 'auto') apply('auto'); };
+  if (typeof mq.addEventListener === 'function') mq.addEventListener('change', onChange);
+  else if (typeof mq.addListener === 'function') mq.addListener(onChange); // fallback เก่า
 })();
 </script>
 
+<!-- ============ วางสคริปต์เดิมของคุณต่อจากนี้ได้ ============ -->
 <script>
-/* ====== วาง “โค้ดการทำงานเดิมของหน้า” ต่อจากนี้ได้เลย ======
-   หมายเหตุ: โค้ดธีมข้างบนไม่ไปยุ่งกับ API/LIFF ของคุณ
-   ถ้าคุณมีสคริปต์ยาวๆ สำหรับโหลดห้อง/เช็กคิว/จอง ให้วางไว้ในสคริปต์บล็อกนี้ได้เลย
-*/
-
-// ตัวอย่างกำหนดค่าเวลาเริ่ม/สิ้นสุดแบบอัตโนมัติ (ถ้ามีอยู่แล้ว ก็ลบส่วนนี้ทิ้งได้)
-(function defaultTime(){
+/* ตัวอย่าง: ตั้งค่าเวลาปัจจุบันอัตโนมัติ (ของเดิมคุณมีอยู่แล้วคงไว้ได้) */
+document.addEventListener('DOMContentLoaded', ()=>{
   const pad = n => String(n).padStart(2,'0');
-  document.addEventListener('DOMContentLoaded', ()=>{
-    const now=new Date(); const today=now.toISOString().slice(0,10);
-    const dateEl=document.getElementById('date'); if(dateEl){ dateEl.value=today; dateEl.min=today; }
-    const start=document.getElementById('start'); const end=document.getElementById('end');
-    let h=now.getHours(), m=now.getMinutes(); if(m>0&&m<=30)m=30; else if(m>30){m=0;h=(h+1)%24;}
-    if(start) start.value=`${pad(h)}:${pad(m)}`;
-    if(end)   end.value  =`${pad((h+1)%24)}:${pad(m)}`;
-  });
-})();
+  const now = new Date(); const today = now.toISOString().slice(0,10);
+  const dateEl = document.getElementById('date'); if(dateEl){ dateEl.value=today; dateEl.min=today; }
+  const start = document.getElementById('start'); const end = document.getElementById('end');
+  let h=now.getHours(), m=now.getMinutes();
+  if(m>0 && m<=30) m=30; else if(m>30){ m=0; h=(h+1)%24; }
+  if(start) start.value = `${pad(h)}:${pad(m)}`;
+  if(end)   end.value   = `${pad((h+1)%24)}:${pad(m)}`;
+});
 </script>
 
 </body>
