@@ -56,19 +56,45 @@
 
   /* ============== BASE UI ============== */
   html,body{height:100%}
-  body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:720px;margin:auto;background:var(--bg);color:var(--text)}
-  fieldset{border:1px solid var(--line);padding:12px;margin-bottom:12px;border-radius:12px;background:var(--card)}
+  body{
+    font-family:system-ui,Segoe UI,Arial;
+    padding:16px;
+    max-width:720px;
+    margin:auto;
+    background:var(--bg);
+    color:var(--text)
+  }
+  fieldset{
+    border:1px solid var(--line);
+    padding:12px;
+    margin-bottom:12px;
+    border-radius:12px;
+    background:var(--card)
+  }
   label{display:block;margin:6px 0 4px;color:var(--muted)}
   input,select,button,textarea{
-    width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;
-    background:var(--input-bg);color:var(--text);outline:none;
+    width:100%;
+    padding:10px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:var(--input-bg);
+    color:var(--text);
+    outline:none;
   }
-  input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent)}
+  input:focus,select:focus,textarea:focus{
+    border-color:var(--primary);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent)
+  }
   a{color:var(--primary)}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
   /* header */
-  .brand-wrap{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .brand-wrap{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:12px
+  }
   .brand{display:flex;align-items:center;gap:10px}
   .brand img{height:50px;width:auto;display:block}
   .brand h1{margin:0;font-size:28px;line-height:1.1}
@@ -76,16 +102,31 @@
   /* theme control */
   .theme-ctrl{display:flex;gap:8px;align-items:center}
   .theme-ctrl select{
-    width:auto; padding:8px 12px; border-radius:10px; background:var(--input-bg); color:var(--text);
+    width:auto;
+    padding:8px 12px;
+    border-radius:10px;
+    background:var(--input-bg);
+    color:var(--text);
     border:1px solid var(--line);
   }
 
   /* dashboard */
   .dash{margin-top:20px}
   .dash h2{margin:0 0 10px}
-  .grid4{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-  @media (min-width:900px){.grid4{grid-template-columns:repeat(4,1fr)}}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+
+  /* ปรับให้ auto-fit, ไม่เหลือช่องโล่งเวลาเหลือ 3 ใบ */
+  .grid4{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:12px;
+  }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px
+  }
   .card h3{margin:0 0 6px;font-size:16px}
   .card .count{font-size:12px;color:var(--muted);margin-bottom:8px}
   .item{font-size:13px;border-top:1px dashed var(--line);padding:6px 0}
@@ -125,28 +166,52 @@
   <label>ห้อง</label>
   <select id="room"></select>
   <div class="row" style="margin-top:8px">
-    <div><label>วันที่</label><input type="date" id="date"></div>
+    <div>
+      <label>วันที่</label>
+      <input type="date" id="date">
+    </div>
   </div>
   <div class="time-row">
-    <div class="time-group"><label>เวลาเริ่ม</label><input type="time" id="start"></div>
-    <div class="time-group"><label>เวลาสิ้นสุด</label><input type="time" id="end"></div>
+    <div class="time-group">
+      <label>เวลาเริ่ม</label>
+      <input type="time" id="start">
+    </div>
+    <div class="time-group">
+      <label>เวลาสิ้นสุด</label>
+      <input type="time" id="end">
+    </div>
   </div>
 </fieldset>
 
 <section id="dash" class="dash">
   <h2>รายการที่จองแล้ว (ตามห้อง/วันที่เลือก)</h2>
   <div class="grid4">
-    <div class="card"><h3>เช้า (06:00–11:59)</h3><div id="c-morning" class="count">0 รายการ</div><div id="l-morning" class="muted">— ว่าง —</div></div>
-    <div class="card"><h3>เที่ยง–บ่ายต้น (12:00–14:59)</h3><div id="c-noon" class="count">0 รายการ</div><div id="l-noon" class="muted">— ว่าง —</div></div>
-    <div class="card"><h3>บ่าย–เย็น (15:00–18:59)</h3><div id="c-evening" class="count">0 รายการ</div><div id="l-evening" class="muted">— ว่าง —</div></div>
-    <div class="card"><h3>ค่ำ (19:00–23:59)</h3><div id="c-night" class="count">0 รายการ</div><div id="l-night" class="muted">— ว่าง —</div></div>
+    <div class="card">
+      <h3>เช้า (06:00–11:59)</h3>
+      <div id="c-morning" class="count">0 รายการ</div>
+      <div id="l-morning" class="muted">— ว่าง —</div>
+    </div>
+
+    <div class="card">
+      <h3>เที่ยง–บ่ายต้น (12:00–14:59)</h3>
+      <div id="c-noon" class="count">0 รายการ</div>
+      <div id="l-noon" class="muted">— ว่าง —</div>
+    </div>
+
+    <div class="card">
+      <h3>บ่าย–เย็น (15:00–18:59)</h3>
+      <div id="c-evening" class="count">0 รายการ</div>
+      <div id="l-evening" class="muted">— ว่าง —</div>
+    </div>
   </div>
 </section>
 
 <fieldset>
   <legend>ข้อมูลผู้จอง</legend>
-  <label>ชื่อผู้จอง</label><input id="by" placeholder="จะเติมจาก LINE ให้อัตโนมัติ">
-  <label>วัตถุประสงค์</label><textarea id="purpose" rows="2" placeholder="เช่น ประชุมโครงการ..."></textarea>
+  <label>ชื่อผู้จอง</label>
+  <input id="by" placeholder="จะเติมจาก LINE ให้อัตโนมัติ">
+  <label>วัตถุประสงค์</label>
+  <textarea id="purpose" rows="2" placeholder="เช่น ประชุมโครงการ..."></textarea>
 </fieldset>
 
 <button id="book">ยืนยันการจอง</button>
@@ -179,15 +244,28 @@
 })();
 </script>
 
-<!-- ====== ตัวอย่างสคริปต์เดิม ตั้งค่าเวลาปัจจุบันอัตโนมัติ ====== -->
+<!-- ====== ตั้งค่าเวลาปัจจุบันอัตโนมัติ ====== -->
 <script>
 document.addEventListener('DOMContentLoaded', ()=>{
   const pad = n => String(n).padStart(2,'0');
-  const now = new Date(); const today = now.toISOString().slice(0,10);
-  const dateEl = document.getElementById('date'); if(dateEl){ dateEl.value=today; dateEl.min=today; }
-  const start = document.getElementById('start'); const end = document.getElementById('end');
-  let h=now.getHours(), m=now.getMinutes();
-  if(m>0 && m<=30) m=30; else if(m>30){ m=0; h=(h+1)%24; }
+  const now = new Date();
+  const today = now.toISOString().slice(0,10);
+
+  const dateEl = document.getElementById('date');
+  if(dateEl){
+    dateEl.value = today;
+    dateEl.min = today;
+  }
+
+  const start = document.getElementById('start');
+  const end   = document.getElementById('end');
+
+  let h = now.getHours();
+  let m = now.getMinutes();
+
+  if(m>0 && m<=30) m=30;
+  else if(m>30){ m=0; h=(h+1)%24; }
+
   if(start) start.value = `${pad(h)}:${pad(m)}`;
   if(end)   end.value   = `${pad((h+1)%24)}:${pad(m)}`;
 });
