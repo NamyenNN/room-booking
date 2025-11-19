@@ -237,9 +237,9 @@
 })();
 </script>
 
-<!-- ====== API + โหลดห้องจาก Apps Script ====== -->
+<!-- ====== API + โหลดห้องจาก Apps Script (ใช้ fn=rooms) ====== -->
 <script>
-  // 🔴 ใส่ URL Web App จริงของเธอตรงนี้ (จาก Deploy > Web app)
+  // URL Web App จริงของเธอ
   const API_URL = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
 
   async function loadRooms(){
@@ -248,12 +248,12 @@
     roomSel.innerHTML = '<option>⏳ กำลังโหลดห้อง...</option>';
 
     try{
-      // เรียกแบบชัด ๆ: ใช้ path=rooms
-      const res = await fetch(API_URL + '?path=rooms', {
+      // ใช้รูปแบบเดิมที่เคยทำงาน: fn=rooms
+      const res = await fetch(API_URL + '?fn=rooms', {
         headers: { 'Accept':'application/json' }
       });
-      const text = await res.text();
 
+      const text = await res.text();
       let data;
       try{
         data = JSON.parse(text);
@@ -282,7 +282,7 @@
     }catch(err){
       console.error('โหลดห้อง error', err);
       roomSel.innerHTML = '<option disabled>โหลดห้องไม่สำเร็จ</option>';
-      msg.textContent = 'โหลดห้องไม่สำเร็จ (เช็ก Web App / doGet / JSON)';
+      msg.textContent = 'โหลดห้องไม่สำเร็จ (ลองรีเฟรช หรือเช็ค Apps Script)';
     }
   }
 </script>
@@ -312,7 +312,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(start) start.value = `${pad(h)}:${pad(m)}`;
   if(end)   end.value   = `${pad((h+1)%24)}:${pad(m)}`;
 
-  // โหลดห้อง
+  // โหลดห้องตอนเปิดหน้า
   loadRooms();
 });
 </script>
