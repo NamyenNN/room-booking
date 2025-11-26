@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme: light dark">
 <title>จองห้องประชุม</title>
 <link rel="icon" type="image/png" href="https://namyennn.github.io/room-booking/LOGOCS.png?v=1">
 
@@ -352,10 +352,9 @@
 <script>
   // URL Web App จริงของเธอ (ตรงกับ Apps Script)
   const API_URL = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
-  // LIFF ID จาก https://liff.line.me/...
+  // LIFF ID
   const LIFF_ID = '2008386695-b1ykgdPk';
 
-  // state เก็บ userId จาก LINE
   const state = {
     lineUserId: null
   };
@@ -381,8 +380,10 @@
       const rooms = (data && data.rooms) || [];
 
       if(!Array.isArray(rooms) || rooms.length === 0){
+        const t = 'ไม่มีข้อมูลห้อง ตรวจสอบชีต "Rooms"';
         roomSel.innerHTML = '<option disabled>ไม่มีข้อมูลห้อง</option>';
-        msg.textContent = 'ไม่มีข้อมูลห้อง ตรวจสอบชีต "Rooms"';
+        msg.textContent = t;
+        alert('จองไม่สำเร็จ\n\n' + t);
         return;
       }
 
@@ -400,8 +401,10 @@
       msg.textContent = '';
     }catch(err){
       console.error('โหลดห้อง error', err);
+      const t = 'โหลดห้องไม่สำเร็จ (เช็ค Web App / action=rooms)';
       roomSel.innerHTML = '<option disabled>โหลดห้องไม่สำเร็จ</option>';
-      msg.textContent = 'โหลดห้องไม่สำเร็จ (เช็ค Web App / action=rooms)';
+      msg.textContent = t;
+      alert('จองไม่สำเร็จ\n\n' + t);
     }
   }
 
@@ -425,11 +428,13 @@
       console.log('LIFF OK, userId =', state.lineUserId);
     }catch(err){
       console.error('LIFF error', err);
-      msg.textContent = '⚠️ ไม่สามารถเชื่อมต่อ LINE ได้ แต่ยังดูตาราง/ห้องได้';
+      const t = 'ไม่สามารถเชื่อมต่อ LINE ได้ แต่ยังดูตาราง/ห้องได้';
+      msg.textContent = '⚠️ ' + t;
+      alert('แจ้งเตือน\n\n' + t);
     }
   }
 
-  // ----- ส่งคำขอจองห้อง -----
+  // ----- ส่งคำขอจองห้อง + popup ทั้งสำเร็จ / ไม่สำเร็จ -----
   async function handleBookingClick(){
     const msg = document.getElementById('msg');
     msg.textContent = '';
@@ -442,12 +447,16 @@
     const purpose = document.getElementById('purpose').value.trim();
 
     if(!room_id || !date || !start || !end){
-      msg.textContent = 'กรุณาเลือกห้อง วันที่ และเวลาให้ครบ';
+      const t = 'กรุณาเลือกห้อง วันที่ และเวลาให้ครบ';
+      msg.textContent = t;
+      alert('จองไม่สำเร็จ\n\n' + t);
       return;
     }
 
     if(!state.lineUserId){
-      msg.textContent = 'ไม่พบข้อมูลบัญชี LINE กรุณาเปิดผ่าน LINE OA อีกครั้ง';
+      const t = 'ไม่พบข้อมูลบัญชี LINE กรุณาเปิดผ่าน LINE OA อีกครั้ง';
+      msg.textContent = t;
+      alert('จองไม่สำเร็จ\n\n' + t);
       return;
     }
 
@@ -476,26 +485,42 @@
         data = JSON.parse(text);
       }catch(e){
         console.error('Response booking ไม่ใช่ JSON:', text);
-        throw new Error('Response not JSON');
+        const t = 'เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง (ไม่ใช่ JSON)';
+        msg.textContent = 'จองไม่สำเร็จ: ' + t;
+        alert('จองไม่สำเร็จ\n\n' + t);
+        return;
       }
 
       if(!data.ok){
         console.warn('booking failed:', data);
+        let t;
         if(data.error === 'TIME_CONFLICT'){
-          msg.textContent = 'ช่วงเวลานี้ถูกจองแล้ว กรุณาเลือกเวลาอื่น';
+          t = 'ช่วงเวลานี้ถูกจองแล้ว กรุณาเลือกเวลาอื่น';
         }else if(data.message){
-          msg.textContent = 'จองไม่สำเร็จ: ' + data.message;
+          t = 'จองไม่สำเร็จ: ' + data.message;
         }else{
-          msg.textContent = 'จองไม่สำเร็จ: ' + (data.error || 'ไม่ทราบสาเหตุ');
+          t = 'จองไม่สำเร็จ: ' + (data.error || 'ไม่ทราบสาเหตุ');
         }
+        msg.textContent = t;
+        alert('จองไม่สำเร็จ\n\n' + t);
         return;
       }
 
-      msg.textContent = '✅ จองสำเร็จ! รหัสอ้างอิง: ' + (data.ref || '');
-      // setTimeout(()=>{ location.href = 'my.html'; }, 1500);
+      const refText = data.ref || '-';
+      msg.textContent = '✅ จองสำเร็จ! รหัสอ้างอิง: ' + refText;
+      alert('จองสำเร็จ\n\nห้อง: ' + room_id +
+            '\nวันที่: ' + date +
+            '\nเวลา: ' + start + ' - ' + end +
+            '\nรหัสอ้างอิง: ' + refText +
+            '\n\nระบบจะส่งข้อความยืนยันไปที่ LINE ของคุณ');
+
+      // ถ้าอยากให้เด้งไปหน้า "การจองของฉัน" อัตโนมัติ เปิดบรรทัดนี้
+      // setTimeout(()=>{ location.href = 'my.html'; }, 500);
     }catch(err){
       console.error('booking error', err);
-      msg.textContent = 'เกิดข้อผิดพลาดในการจอง กรุณาลองใหม่อีกครั้ง';
+      const t = 'เกิดข้อผิดพลาดในการจอง กรุณาลองใหม่อีกครั้ง';
+      msg.textContent = t;
+      alert('จองไม่สำเร็จ\n\n' + t);
     }
   }
 </script>
