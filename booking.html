@@ -360,6 +360,14 @@
     lineUserId: null
   };
 
+  // helper แปลงเวลา "HH:MM" → นาที
+  function timeToMinutes(t){
+    if(!t) return NaN;
+    const parts = t.split(':').map(Number);
+    if(parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return NaN;
+    return parts[0]*60 + parts[1];
+  }
+
   // ----- โหลดห้องจาก Apps Script (action=rooms) -----
   async function loadRooms(){
     const roomSel = document.getElementById('room');
@@ -444,6 +452,22 @@
     // ===== เช็ค input ฝั่งหน้าเว็บ =====
     if(!room_id || !date || !start || !end){
       const t = 'กรุณาเลือกห้อง วันที่ และเวลาให้ครบ';
+      msg.textContent = t;
+      alert('จองไม่สำเร็จ\n\n' + t);
+      return;
+    }
+
+    // เช็คว่ารูปแบบเวลาโอเคมั้ย และ end > start
+    const sMin = timeToMinutes(start);
+    const eMin = timeToMinutes(end);
+    if(isNaN(sMin) || isNaN(eMin)){
+      const t = 'รูปแบบเวลาไม่ถูกต้อง กรุณาเลือกใหม่อีกครั้ง';
+      msg.textContent = t;
+      alert('จองไม่สำเร็จ\n\n' + t);
+      return;
+    }
+    if(eMin <= sMin){
+      const t = 'เวลาเริ่มต้องน้อยกว่าเวลาสิ้นสุด (End > Start)';
       msg.textContent = t;
       alert('จองไม่สำเร็จ\n\n' + t);
       return;
