@@ -10,10 +10,11 @@
 <style>
   /* ============== THEME TOKENS (Light default) ============== */
   :root{
-    --bg: #fafafa;
+    --bg: #f3f4f6;        /* พื้นหลังนอก */
     --text: #0f172a;
     --muted:#64748b;
-    --card:#ffffff;
+    --card:#ffffff;       /* การ์ดหลัก */
+    --subcard:#f9fafb;    /* การ์ดด้านใน */
     --line:#e5e7eb;
     --primary:#3b82f6;
     --primary-press:#2563eb;
@@ -21,54 +22,79 @@
   }
   @media (prefers-color-scheme: dark){
     :root{
-      --bg:#0b1220;
+      --bg:#020617;
       --text:#e5e7eb;
       --muted:#94a3b8;
-      --card:#0f172a;
-      --line:#1f2a44;
+      --card:#020617;
+      --subcard:#020617;
+      --line:#1f2937;
       --primary:#60a5fa;
       --primary-press:#3b82f6;
-      --input-bg:#0b1220;
+      --input-bg:#020617;
     }
   }
   body.force-light{
-    --bg: #fafafa;
+    --bg: #f3f4f6;
     --text: #0f172a;
     --muted:#64748b;
     --card:#ffffff;
+    --subcard:#f9fafb;
     --line:#e5e7eb;
     --primary:#3b82f6;
     --primary-press:#2563eb;
     --input-bg:#ffffff;
   }
   body.force-dark{
-    --bg:#0b1220;
+    --bg:#020617;
     --text:#e5e7eb;
     --muted:#94a3b8;
-    --card:#0f172a;
-    --line:#1f2a44;
+    --card:#020617;
+    --subcard:#020617;
+    --line:#1f2937;
     --primary:#60a5fa;
     --primary-press:#3b82f6;
-    --input-bg:#0b1220;
+    --input-bg:#020617;
   }
 
+  /* ============== BASE LAYOUT ============== */
   html,body{height:100%}
   body{
     font-family:system-ui,Segoe UI,Arial;
     padding:16px;
-    max-width:720px;
-    margin:auto;
     background:var(--bg);
     color:var(--text);
+    display:flex;
+    justify-content:center;
   }
+
+  .page{
+    width:100%;
+    max-width:760px;
+  }
+
+  .page-card{
+    background:var(--card);
+    border-radius:18px;
+    border:1px solid var(--line);
+    padding:18px 16px 20px;
+    box-shadow:0 16px 40px rgba(15,23,42,.12);
+  }
+
   fieldset{
     border:1px solid var(--line);
-    padding:12px;
-    margin-bottom:12px;
-    border-radius:12px;
-    background:var(--card);
+    padding:14px 14px 16px;
+    margin-bottom:14px;
+    border-radius:14px;
+    background:var(--subcard);
   }
-  label{display:block;margin:6px 0 4px;color:var(--muted)}
+  fieldset legend{
+    padding:0 6px;
+    font-size:14px;
+    font-weight:600;
+    color:var(--muted);
+  }
+
+  label{display:block;margin:6px 0 4px;color:var(--muted);font-size:13px}
   input,select,button,textarea{
     width:100%;
     padding:10px;
@@ -77,76 +103,89 @@
     background:var(--input-bg);
     color:var(--text);
     outline:none;
+    font-size:14px;
   }
   input:focus,select:focus,textarea:focus{
     border-color:var(--primary);
-    box-shadow:0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
   }
 
-  /* ปุ่มยืนยันการจอง เขียวสด */
+  /* ปุ่มยืนยันการจอง เขียว */
   button{
     cursor:pointer;
-    background:#22c55e;      /* เขียวสดแบบ apple green */
+    background:#22c55e;
     color:white;
     border:none;
-    margin-top:8px;
+    margin-top:10px;
     padding:12px;
-    font-size:16px;
+    font-size:15px;
     font-weight:600;
-    border-radius:10px;
-    transition:background .2s;
+    border-radius:999px;
+    transition:background .15s, transform .05s;
   }
   button:active{
-    background:#16a34a;     /* เขียวเข้มขึ้นตอนกด */
+    background:#16a34a;
+    transform:scale(.99);
   }
 
   a{color:var(--primary)}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
+  /* ============== HEADER & THEME ============== */
   .brand-wrap{
     display:flex;
     align-items:center;
     justify-content:space-between;
-    margin-bottom:12px;
+    margin-bottom:16px;
   }
   .brand{display:flex;align-items:center;gap:10px}
-  .brand img{height:50px;width:auto;display:block}
-  .brand h1{margin:0;font-size:28px;line-height:1.1}
+  .brand img{height:48px;width:auto;display:block}
+  .brand h1{margin:0;font-size:24px;line-height:1.1}
+
+  .subtitle{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:2px;
+  }
 
   .theme-ctrl{display:flex;gap:8px;align-items:center}
+  .theme-ctrl label{margin:0;font-size:12px}
   .theme-ctrl select{
     width:auto;
-    padding:8px 12px;
-    border-radius:10px;
+    padding:6px 10px;
+    border-radius:999px;
     background:var(--input-bg);
     color:var(--text);
     border:1px solid var(--line);
+    font-size:12px;
   }
 
-  .dash{margin-top:20px}
-  .dash h2{margin:0 0 10px}
+  /* ============== DASHBOARD CARDS ============== */
+  .dash{margin-top:4px}
+  .dash h2{margin:0 0 8px;font-size:15px}
 
   .grid4{
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-    gap:12px;
+    gap:10px;
   }
 
   .card{
     background:var(--card);
-    border:1px solid var(--line);
+    border:1px dashed var(--line);
     border-radius:12px;
-    padding:12px;
+    padding:10px 10px 8px;
   }
-  .card h3{margin:0 0 6px;font-size:16px}
-  .card .count{font-size:12px;color:var(--muted);margin-bottom:8px}
-  .item{font-size:13px;border-top:1px dashed var(--line);padding:6px 0}
+  .card h3{margin:0 0 4px;font-size:14px}
+  .card .count{font-size:11px;color:var(--muted);margin-bottom:4px}
+  .item{font-size:12px;border-top:1px dashed var(--line);padding:4px 0}
   .muted{color:var(--muted);font-size:12px}
 
-  .time-row{display:flex;gap:12px}
+  /* TIME ROW */
+  .time-row{display:flex;gap:12px;margin-top:6px}
   .time-group{display:flex;align-items:center;gap:6px;flex:1}
-  .time-group label{margin:0}
-  #start,#end{max-width:120px;padding:6px;font-size:14px}
+  .time-group label{margin:0;font-size:13px}
+  #start,#end{max-width:130px;padding:6px;font-size:14px}
 
   .hint{
     font-size:12px;
@@ -156,16 +195,16 @@
 
   /* ===== ปรับสวยเฉพาะส่วน "ข้อมูลผู้จอง" ===== */
   #user-info{
-    max-width:520px;           /* แคบลงเล็กน้อย ดูโฟกัสดีขึ้น */
-    margin:20px auto 12px;     /* จัดให้อยู่กลางหน้า */
-    padding:14px 16px;
+    max-width:540px;
+    margin:16px auto 10px;
+    padding:14px 16px 16px;
   }
   #user-info legend{
     font-weight:600;
-    font-size:15px;
+    font-size:14px;
   }
   #user-info label{
-    font-size:14px;
+    font-size:13px;
     margin-top:4px;
   }
   #user-info input,
@@ -175,86 +214,113 @@
   }
   #purpose{
     min-height:80px;
-    resize:vertical;           /* ถ้าอยากพิมพ์เยอะ ก็ลากขยายได้ */
+    resize:vertical;
+  }
+
+  /* ปุ่ม + ลิงก์ด้านล่างจัดกลาง */
+  .actions{
+    max-width:540px;
+    margin:0 auto;
+    text-align:center;
+  }
+  .actions p{
+    margin:4px 0 0;
   }
 </style>
 </head>
 <body>
 
-<div class="brand-wrap">
-  <header class="brand">
-    <a href="booking.html" aria-label="หน้าแรกการจอง">
-      <img src="https://namyennn.github.io/room-booking/LOGOCS.png?v=1" alt="LOGO">
-    </a>
-    <h1>จองห้องประชุม</h1>
-  </header>
+<div class="page">
+  <div class="page-card">
 
-  <div class="theme-ctrl">
-    <label for="theme-select" class="muted">ธีม</label>
-    <select id="theme-select" aria-label="Theme">
-      <option value="auto">Auto (ตามเครื่อง)</option>
-      <option value="light">Light</option>
-      <option value="dark">Dark</option>
-    </select>
+    <div class="brand-wrap">
+      <header class="brand">
+        <a href="booking.html" aria-label="หน้าแรกการจอง">
+          <img src="https://namyennn.github.io/room-booking/LOGOCS.png?v=1" alt="LOGO">
+        </a>
+        <div>
+          <h1>จองห้องประชุม</h1>
+          <div class="subtitle">เลือกห้อง • เลือกเวลา • ยืนยันผ่าน LINE</div>
+        </div>
+      </header>
+
+      <div class="theme-ctrl">
+        <label for="theme-select" class="muted">ธีม</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- ========== กรอบเลือกห้องและวันเวลา ========== -->
+    <fieldset>
+      <legend>เลือกห้องและวันเวลา</legend>
+      <label>ห้อง</label>
+      <select id="room"></select>
+
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label>วันที่</label>
+          <input type="date" id="date">
+        </div>
+      </div>
+
+      <div class="time-row">
+        <div class="time-group">
+          <label>เวลาเริ่ม</label>
+          <input type="time" id="start">
+        </div>
+        <div class="time-group">
+          <label>เวลาสิ้นสุด</label>
+          <input type="time" id="end">
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- ========== กรอบตารางช่วงเวลา ========== -->
+    <fieldset class="dash">
+      <legend>รายการที่จองแล้ว (ตามห้อง / วันที่เลือก)</legend>
+      <div class="grid4">
+        <div class="card">
+          <h3>เช้า (06:00–11:59)</h3>
+          <div id="c-morning" class="count">0 รายการ</div>
+          <div id="l-morning" class="muted">— ว่าง —</div>
+        </div>
+
+        <div class="card">
+          <h3>เที่ยง–บ่ายต้น (12:00–14:59)</h3>
+          <div id="c-noon" class="count">0 รายการ</div>
+          <div id="l-noon" class="muted">— ว่าง —</div>
+        </div>
+
+        <div class="card">
+          <h3>บ่าย–เย็น (15:00–18:59)</h3>
+          <div id="c-evening" class="count">0 รายการ</div>
+          <div id="l-evening" class="muted">— ว่าง —</div>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- ========== กรอบข้อมูลผู้จอง ========== -->
+    <fieldset id="user-info">
+      <legend>ข้อมูลผู้จอง</legend>
+      <label>ชื่อผู้จอง</label>
+      <input id="by" placeholder="จะเติมจาก LINE ให้อัตโนมัติ">
+      <label>วัตถุประสงค์</label>
+      <textarea id="purpose" rows="3" placeholder="เช่น ประชุมโครงการ..."></textarea>
+    </fieldset>
+
+    <!-- ========== ปุ่ม + ข้อความด้านล่าง ========== -->
+    <div class="actions">
+      <button id="book">ยืนยันการจอง</button>
+      <p id="msg" class="hint"></p>
+      <p><a href="my.html">ไปที่ “การจองของฉัน / ยกเลิก”</a></p>
+    </div>
+
   </div>
 </div>
-
-<fieldset>
-  <legend>เลือกห้องและวันเวลา</legend>
-  <label>ห้อง</label>
-  <select id="room"></select>
-  <div class="row" style="margin-top:8px">
-    <div>
-      <label>วันที่</label>
-      <input type="date" id="date">
-    </div>
-  </div>
-  <div class="time-row">
-    <div class="time-group">
-      <label>เวลาเริ่ม</label>
-      <input type="time" id="start">
-    </div>
-    <div class="time-group">
-      <label>เวลาสิ้นสุด</label>
-      <input type="time" id="end">
-    </div>
-  </div>
-</fieldset>
-
-<section id="dash" class="dash">
-  <h2>รายการที่จองแล้ว (ตามห้อง/วันที่เลือก)</h2>
-  <div class="grid4">
-    <div class="card">
-      <h3>เช้า (06:00–11:59)</h3>
-      <div id="c-morning" class="count">0 รายการ</div>
-      <div id="l-morning" class="muted">— ว่าง —</div>
-    </div>
-
-    <div class="card">
-      <h3>เที่ยง–บ่ายต้น (12:00–14:59)</h3>
-      <div id="c-noon" class="count">0 รายการ</div>
-      <div id="l-noon" class="muted">— ว่าง —</div>
-    </div>
-
-    <div class="card">
-      <h3>บ่าย–เย็น (15:00–18:59)</h3>
-      <div id="c-evening" class="count">0 รายการ</div>
-      <div id="l-evening" class="muted">— ว่าง —</div>
-    </div>
-  </div>
-</section>
-
-<fieldset id="user-info">
-  <legend>ข้อมูลผู้จอง</legend>
-  <label>ชื่อผู้จอง</label>
-  <input id="by" placeholder="จะเติมจาก LINE ให้อัตโนมัติ">
-  <label>วัตถุประสงค์</label>
-  <textarea id="purpose" rows="3" placeholder="เช่น ประชุมโครงการ..."></textarea>
-</fieldset>
-
-<button id="book">ยืนยันการจอง</button>
-<p id="msg" class="hint"></p>
-<p><a href="my.html">ไปที่ “การจองของฉัน / ยกเลิก”</a></p>
 
 <!-- โหลด LIFF SDK -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -346,7 +412,6 @@
       await liff.init({ liffId: LIFF_ID });
 
       if(!liff.isLoggedIn()){
-        // ถ้าเปิดใน browser เดี่ยว ๆ → จะ redirect ไป login
         liff.login();
         return;
       }
