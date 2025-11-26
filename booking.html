@@ -352,15 +352,11 @@
 <script>
   // URL Web App จริงของเธอ (ตรงกับ Apps Script)
   const API_URL = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
-  // LIFF ID จาก https://liff.line.me/...
+  // LIFF ID
   const LIFF_ID = '2008386695-b1ykgdPk';
 
-  // state เก็บ userId จาก LINE
-  const state = {
-    lineUserId: null
-  };
+  const state = { lineUserId: null };
 
-  // helper แปลงเวลา "HH:MM" → นาที
   function timeToMinutes(t){
     if(!t) return NaN;
     const parts = t.split(':').map(Number);
@@ -368,7 +364,7 @@
     return parts[0]*60 + parts[1];
   }
 
-  // ----- โหลดห้องจาก Apps Script (action=rooms) -----
+  // ----- โหลดห้อง -----
   async function loadRooms(){
     const roomSel = document.getElementById('room');
     const msg = document.getElementById('msg');
@@ -413,7 +409,7 @@
     }
   }
 
-  // ----- LIFF: login + ดึง profile -----
+  // ----- LIFF -----
   async function initLiff(){
     const msg = document.getElementById('msg');
     try{
@@ -437,7 +433,7 @@
     }
   }
 
-  // ----- ส่งคำขอจองห้อง + popup ทั้งสำเร็จ / ไม่สำเร็จ -----
+  // ----- กดปุ่มจอง -----
   async function handleBookingClick(){
     const msg = document.getElementById('msg');
     msg.textContent = '';
@@ -449,7 +445,6 @@
     const book_by = document.getElementById('by').value.trim();
     const purpose = document.getElementById('purpose').value.trim();
 
-    // ===== เช็ค input ฝั่งหน้าเว็บ =====
     if(!room_id || !date || !start || !end){
       const t = 'กรุณาเลือกห้อง วันที่ และเวลาให้ครบ';
       msg.textContent = t;
@@ -457,7 +452,6 @@
       return;
     }
 
-    // เช็คว่ารูปแบบเวลาโอเคมั้ย และ end > start
     const sMin = timeToMinutes(start);
     const eMin = timeToMinutes(end);
     if(isNaN(sMin) || isNaN(eMin)){
@@ -494,10 +488,13 @@
       };
       console.log('ส่ง payload:', payload);
 
+      // 🔴 จุดแก้ CORS: ส่งแบบ form-encoded: payload=<json>
+      const form = new URLSearchParams();
+      form.append('payload', JSON.stringify(payload));
+
       const res = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify(payload)
+        body: form       // ไม่ตั้ง Content-Type เอง ให้ browser จัดการ
       });
 
       const text = await res.text();
@@ -513,7 +510,6 @@
         return;
       }
 
-      // ===== ฝั่ง Apps Script ตอบ ok:false =====
       if(!data.ok){
         console.warn('booking failed:', data);
         const detail = [
@@ -549,7 +545,6 @@
         '\n\nระบบจะส่งข้อความยืนยันไปที่ LINE ของคุณ'
       );
 
-      // ถ้าอยากให้เด้งไปหน้า "การจองของฉัน" อัตโนมัติ เปิดบรรทัดนี้
       // setTimeout(()=>{ location.href = 'my.html'; }, 500);
     }catch(err){
       console.error('booking error', err);
@@ -585,11 +580,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(start) start.value = `${pad(h)}:${pad(m)}`;
   if(end)   end.value   = `${pad((h+1)%24)}:${pad(m)}`;
 
-  // โหลดห้อง + init LIFF
   loadRooms();
   initLiff();
 
-  // ติด event ปุ่มจอง
   const bookBtn = document.getElementById('book');
   if(bookBtn){
     bookBtn.addEventListener('click', handleBookingClick);
