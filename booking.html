@@ -82,6 +82,16 @@
     border-color:var(--primary);
     box-shadow:0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent)
   }
+  button{
+    cursor:pointer;
+    background:var(--primary);
+    color:#fff;
+    border:none;
+    margin-top:8px;
+  }
+  button:active{
+    background:var(--primary-press);
+  }
   a{color:var(--primary)}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
@@ -214,6 +224,9 @@
 <p id="msg" class="hint"></p>
 <p><a href="my.html">ไปที่ “การจองของฉัน / ยกเลิก”</a></p>
 
+<!-- โหลด LIFF SDK -->
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
 <!-- ====== เปลี่ยนธีม 3 โหมด ====== -->
 <script>
 (function theme3Mode(){
@@ -237,37 +250,37 @@
 })();
 </script>
 
-<!-- ====== API + โหลดห้องจาก Apps Script (ใช้ action=rooms และ field ตาม listRooms) ====== -->
+<!-- ====== API + LIFF + Booking Logic ====== -->
 <script>
-  // URL Web App จริงของเธอ (ตรงกับ Apps Script ที่ส่งมา)
+  // URL Web App จริงของเธอ (ตรงกับ Apps Script)
   const API_URL = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
+  // LIFF ID จาก https://liff.line.me/...
+  const LIFF_ID = '2008386695-b1ykgdPk';
 
+  // state เก็บ userId จาก LINE
+  const state = {
+    lineUserId: null
+  };
+
+  // ----- โหลดห้องจาก Apps Script (action=rooms) -----
   async function loadRooms(){
     const roomSel = document.getElementById('room');
     const msg = document.getElementById('msg');
     roomSel.innerHTML = '<option>⏳ กำลังโหลดห้อง...</option>';
 
     try{
-      // 🔑 ตรงกับ doGet: ใช้ action=rooms
       const url = API_URL + '?action=rooms';
-      console.log('fetch rooms from', url);
       const res = await fetch(url, { headers: { 'Accept':'application/json' }});
       const text = await res.text();
-      console.log('raw rooms response:', text.slice(0,200));
-
       let data;
       try{
         data = JSON.parse(text);
       }catch(e){
-        console.error('Response ไม่ใช่ JSON:', e);
+        console.error('Response ไม่ใช่ JSON:', text);
         throw new Error('Response not JSON');
       }
 
-      if (!data.ok){
-        console.warn('data.ok = false', data);
-      }
-
-      const rooms = data.rooms || [];
+      const rooms = (data && data.rooms) || [];
 
       if(!Array.isArray(rooms) || rooms.length === 0){
         roomSel.innerHTML = '<option disabled>ไม่มีข้อมูลห้อง</option>';
@@ -277,7 +290,6 @@
 
       roomSel.innerHTML = '<option value="">— เลือกห้อง —</option>';
       rooms.forEach(r=>{
-        // listRooms() คืน {room_id, room_name, capacity, note}
         const value = r.room_id || r.room_name || '';
         const label = r.room_name || r.room_id || '(ไม่ระบุชื่อห้อง)';
         if(!value) return;
@@ -291,12 +303,108 @@
     }catch(err){
       console.error('โหลดห้อง error', err);
       roomSel.innerHTML = '<option disabled>โหลดห้องไม่สำเร็จ</option>';
-      msg.textContent = 'โหลดห้องไม่สำเร็จ (เช็ค Web App / action=rooms / JSON)';
+      msg.textContent = 'โหลดห้องไม่สำเร็จ (เช็ค Web App / action=rooms)';
+    }
+  }
+
+  // ----- LIFF: login + ดึง profile -----
+  async function initLiff(){
+    const msg = document.getElementById('msg');
+    try{
+      await liff.init({ liffId: LIFF_ID });
+
+      if(!liff.isLoggedIn()){
+        // ถ้าเปิดใน browser เดี่ยว ๆ → จะ redirect ไป login
+        liff.login();
+        return;
+      }
+
+      const profile = await liff.getProfile();
+      state.lineUserId = profile.userId;
+      const byEl = document.getElementById('by');
+      if(byEl && !byEl.value){
+        byEl.value = profile.displayName || '';
+      }
+      console.log('LIFF OK, userId =', state.lineUserId);
+    }catch(err){
+      console.error('LIFF error', err);
+      msg.textContent = '⚠️ ไม่สามารถเชื่อมต่อ LINE ได้ แต่ยังดูตาราง/ห้องได้';
+    }
+  }
+
+  // ----- ส่งคำขอจองห้อง -----
+  async function handleBookingClick(){
+    const msg = document.getElementById('msg');
+    msg.textContent = '';
+
+    const room_id = document.getElementById('room').value;
+    const date    = document.getElementById('date').value;
+    const start   = document.getElementById('start').value;
+    const end     = document.getElementById('end').value;
+    const book_by = document.getElementById('by').value.trim();
+    const purpose = document.getElementById('purpose').value.trim();
+
+    if(!room_id || !date || !start || !end){
+      msg.textContent = 'กรุณาเลือกห้อง วันที่ และเวลาให้ครบ';
+      return;
+    }
+
+    if(!state.lineUserId){
+      msg.textContent = 'ไม่พบข้อมูลบัญชี LINE กรุณาเปิดผ่าน LINE OA อีกครั้ง';
+      return;
+    }
+
+    msg.textContent = 'กำลังส่งคำขอจอง...';
+
+    try{
+      const payload = {
+        room_id,
+        date,
+        start,
+        end,
+        book_by,
+        purpose,
+        line_user: state.lineUserId
+      };
+
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const text = await res.text();
+      let data;
+      try{
+        data = JSON.parse(text);
+      }catch(e){
+        console.error('Response booking ไม่ใช่ JSON:', text);
+        throw new Error('Response not JSON');
+      }
+
+      if(!data.ok){
+        console.warn('booking failed:', data);
+        if(data.error === 'TIME_CONFLICT'){
+          msg.textContent = 'ช่วงเวลานี้ถูกจองแล้ว กรุณาเลือกเวลาอื่น';
+        }else if(data.message){
+          msg.textContent = 'จองไม่สำเร็จ: ' + data.message;
+        }else{
+          msg.textContent = 'จองไม่สำเร็จ: ' + (data.error || 'ไม่ทราบสาเหตุ');
+        }
+        return;
+      }
+
+      msg.textContent = '✅ จองสำเร็จ! รหัสอ้างอิง: ' + (data.ref || '');
+      // จะ redirect ไปหน้า my.html ก็ได้ เช่น:
+      // setTimeout(()=>{ location.href = 'my.html'; }, 1500);
+    }catch(err){
+      console.error('booking error', err);
+      msg.textContent = 'เกิดข้อผิดพลาดในการจอง กรุณาลองใหม่อีกครั้ง';
     }
   }
 </script>
 
-<!-- ====== ตั้งค่าเวลา + โหลดห้องตอนเปิดหน้า ====== -->
+<!-- ====== ตั้งค่าเวลา + โหลดห้อง + init LIFF ตอนเปิดหน้า ====== -->
 <script>
 document.addEventListener('DOMContentLoaded', ()=>{
   const pad = n => String(n).padStart(2,'0');
@@ -321,8 +429,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(start) start.value = `${pad(h)}:${pad(m)}`;
   if(end)   end.value   = `${pad((h+1)%24)}:${pad(m)}`;
 
-  // โหลดห้องตอนเปิดหน้า
+  // โหลดห้อง + init LIFF
   loadRooms();
+  initLiff();
+
+  // ติด event ปุ่มจอง
+  const bookBtn = document.getElementById('book');
+  if(bookBtn){
+    bookBtn.addEventListener('click', handleBookingClick);
+  }
 });
 </script>
 
