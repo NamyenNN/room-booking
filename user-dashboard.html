@@ -84,7 +84,7 @@
   button{cursor:pointer}
   .filters{
     display:grid;
-    grid-template-columns:1fr 1fr 1fr auto; /* เหลือ 4 ช่อง */
+    grid-template-columns:1fr 1fr 1fr auto; /* 4 ช่อง */
     gap:8px;
     align-items:end;
   }
@@ -277,14 +277,13 @@
 <script>
   // ===== ตั้งค่าให้ตรงกับระบบของคุณ =====
   const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
-  const POLL_SEC = 7; // อัปเดตทุก 7 วินาที (ซ่อนไว้ ไม่โชว์หน้าเว็บ)
+  const POLL_SEC = 7; // อัปเดตทุก 7 วินาที
   // ======================================
 
   let allRooms = [];
   let allItems = [];
   let pollTimer = null;
   let lastHash = '';
-  let paused = false;
 
   const $ = id => document.getElementById(id);
   const log = t => { const el=$('debug'); if(el) el.textContent += t+'\n'; };
@@ -302,8 +301,9 @@
     return new Date(`${dateStr}T${t}:00`);
   }
   function itemsHash(items){
-    // แฮชแบบง่าย: เอาคีย์หลักมาเรียงแล้ว stringify
-    return JSON.stringify(items.map(x=>[x.ref,x.room_id,x.date,x.start,x.end,x.by,x.purpose,x.status]).sort());
+    return JSON.stringify(items.map(x=>[
+      x.ref,x.room_id,x.date,x.start,x.end,x.by,x.purpose,x.status
+    ]).sort());
   }
 
   // fetch helper
@@ -328,71 +328,61 @@
   // โหลดห้อง
   async function loadRooms(){
     const d = await api('?action=rooms');
-    allRooms = (d.rooms||[]).map(r=>({room_id:r.room_id, room_name:r.room_name||r.room_id}));
+    allRooms = (d.rooms||[]).map(r=>({
+      room_id:r.room_id,
+      room_name:r.room_name||r.room_id
+    }));
     const sel = $('room');
     sel.innerHTML = '<option value="">(ทุกห้อง)</option>';
     allRooms.forEach(r=>{
       const o=document.createElement('option');
-      o.value=r.room_id; o.textContent=r.room_name; sel.appendChild(o);
+      o.value=r.room_id;
+      o.textContent=r.room_name;
+      sel.appendChild(o);
     });
   }
 
-  // ดึงข้อมูลการจอง (bookings → fallback calendar)
+  // ดึงข้อมูลการจองจาก calendar (ตัวที่เราใช้กันอยู่แล้ว)
   async function loadAllBookings(){
     const f = $('date_from').value;
     const t = $('date_to').value;
     const roomPick = $('room').value || '';
 
-    // ลอง bookings ก่อน (มีสถานะ cancelled ด้วย ถ้าคุณเปิด endpoint นี้)
-    try{
-      const b = await api(
-        '?action=bookings'
-        + (roomPick ? '&room_id='+encodeURIComponent(roomPick): '')
-        + (f? '&date_from='+f:'')
-        + (t? '&date_to='+t:'')
-      );
-      if (b && b.ok && Array.isArray(b.items)){
-        allItems = b.items.map(x=>({
-          ref:x.ref, room_id:x.room_id, date:x.date, start:x.start, end:x.end, by:x.by, purpose:x.purpose,
-          status: (x.status || 'confirmed')
-        }));
-        log('USED: bookings ('+allItems.length+' items)');
-        return;
-      }
-    }catch(err){ log('bookings failed: '+String(err)); }
+    const path =
+      '?action=calendar'
+      + (roomPick ? '&room_id='+encodeURIComponent(roomPick) : '')
+      + (f ? '&date_from='+f : '')
+      + (t ? '&date_to='+t : '');
 
-    // calendar: เฉพาะที่ไม่ cancelled
-    const c = await api(
-      `?action=calendar`
-      + (roomPick?('&room_id='+encodeURIComponent(roomPick)) : '')
-      + (f?('&date_from='+f):'')
-      + (t?('&date_to='+t):'')
-    );
-    allItems = (c.items||[]).map(x=>({ ...x, status:'confirmed' }));
-    log('USED: calendar ('+allItems.length+' items)');
+    const d = await api(path);
+    allItems = (d.items||[]).map(x=>({
+      ...x,
+      status:'confirmed' // calendar ไม่มีสถานะ cancel ให้ถือว่า confirmed
+    }));
   }
 
   // สถานะ ณ ปัจจุบัน
   function effectiveStatus(it){
-    const raw = (it.status || '').toLowerCase();
-    if (raw === 'cancelled') return { label:'cancelled', cls:'status-cancelled' };
     try{
       const now = new Date();
       const s = parseDateTimeLocal(it.date, it.start);
       const e = it.end && /^\d{2}:\d{2}$/.test(it.end)
         ? parseDateTimeLocal(it.date, it.end)
         : new Date(s.getTime() + 60*60*1000);
+
       if (now < s) return { label:'wait', cls:'status-wait' };
       if (now >= s && now <= e) return { label:'กำลังประชุม', cls:'status-ongoing' };
-    }catch(_){}
-    return { label:'confirmed', cls:'status-confirmed' };
+      return { label:'confirmed', cls:'status-confirmed' };
+    }catch(_){
+      return { label:'confirmed', cls:'status-confirmed' };
+    }
   }
   const statusBadge = it => {
     const s = effectiveStatus(it);
     return `<span class="status-badge ${s.cls}">${s.label}</span>`;
   };
 
-  // ===== Timeline =====
+  // ===== Timeline (แบบง่าย ใช้เฉพาะ single day) =====
   const TL_START = 7, TL_END = 20, TL_SPAN = (TL_END - TL_START) * 60;
   const hmToMinutes = hm => {
     const [h,m]=(hm||'00:00').split(':').map(Number);
@@ -422,8 +412,7 @@
       const widthPct = (Math.max(eC - sC, 10) / TL_SPAN) * 100;
 
       const on = effectiveStatus(it).cls === 'status-ongoing';
-      const cancelled = (it.status||'').toLowerCase()==='cancelled';
-      html += `<div class="slot ${on?'ongoing':''} ${cancelled?'cancelled':''}"
+      html += `<div class="slot ${on?'ongoing':''}"
                   title="${it.start||'-'}-${it.end||'-'} • ${it.by||'-'}"
                   style="left:${leftPct}%;width:${widthPct}%">
                   ${it.start||'-'}-${it.end||'-'} • ${it.by||'-'}
@@ -507,7 +496,6 @@
 
   // ===== Real-time polling =====
   async function tick(force=false){
-    if(paused && !force) return;
     try{
       await loadAllBookings();
       const h = itemsHash(allItems);
@@ -516,27 +504,33 @@
         renderDashboard();
       }
       $('stamp').textContent = 'อัปเดตล่าสุด: ' + nowStamp();
-      $('liveDot').classList.toggle('paused', paused);
-      $('liveText').textContent = paused ? 'Paused' : 'Live';
+      msg('โหมดเรียลไทม์กำลังทำงาน', 'ok');
     }catch(e){
       $('stamp').textContent = 'อัปเดตล้มเหลว: ' + String(e);
+      msg('❌ โหลดข้อมูลไม่สำเร็จ: '+String(e), 'bad');
     }
   }
 
   function schedule(){
     if(pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(tick, POLL_SEC*1000); // ใช้ค่าคงที่
+    pollTimer = setInterval(()=>tick(false), POLL_SEC*1000);
   }
 
   // boot
   document.addEventListener('DOMContentLoaded', async ()=>{
-    // default date = วันนี้ → อีก 60 วัน
+    // default date = วันนี้ → ย้อนหลัง 7 วัน ถึงอีก 60 วัน (กันกรณีจองอยู่ในอดีตนิดหน่อย)
     const today = new Date();
+    const past  = new Date(); past.setDate(today.getDate()-7);
     const twoM  = new Date(); twoM.setDate(today.getDate()+60);
-    $('date_from').value = toDateStr(today);
+    $('date_from').value = toDateStr(past);
     $('date_to').value   = toDateStr(twoM);
 
-    await loadRooms();
+    try{
+      await loadRooms();
+    }catch(e){
+      msg('❌ โหลดรายชื่อห้องไม่สำเร็จ: '+String(e), 'bad');
+    }
+
     await tick(true);  // ดึงครั้งแรก + แสดงผล
     schedule();        // เริ่มโพลทุก POLL_SEC วินาที
 
@@ -550,8 +544,6 @@
 
     // กลับมาโฟกัสหน้า → อัปเดตทันที
     document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) tick(true); });
-
-    msg('โหมดเรียลไทม์กำลังทำงาน', 'ok');
   });
 </script>
 </body>
