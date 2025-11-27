@@ -112,10 +112,23 @@
     padding:12px;
   }
   .card h3{margin:0 0 6px;font-size:16px}
+
+  .day-block{
+    margin-top:8px;
+    padding-top:6px;
+    border-top:1px dashed #e5e7eb;
+  }
+  .day-title{
+    font-size:13px;
+    font-weight:600;
+    color:#334155;
+    margin-bottom:4px;
+  }
+
   table{
     width:100%;
     border-collapse:collapse;
-    margin-top:8px;
+    margin-top:6px;
   }
   th,td{
     border:1px solid var(--line);
@@ -171,13 +184,13 @@
     to{box-shadow:0 0 0 10px rgba(10,167,128,0)}
   }
 
-  .timeline-wrap{margin-top:8px}
+  .timeline-wrap{margin-top:4px}
   .timeline-head{
     display:flex;
     justify-content:space-between;
     font-size:11px;
     color:#555;
-    margin:2px 2px 4px;
+    margin:0 2px 4px;
   }
   .timeline{
     position:relative;
@@ -216,7 +229,7 @@
   .timeline-legend{
     font-size:11px;
     color:#666;
-    margin-top:4px;
+    margin-top:2px;
   }
 </style>
 </head>
@@ -227,7 +240,7 @@
       <img src="https://namyennn.github.io/room-booking/LOGOCS.png?v=1" alt="Logo" class="brand-logo">
       <div class="brand-title">
         <h1>แดชบอร์ดการจองห้อง</h1>
-        <div class="brand-sub">มุมมองรายวัน – เลือกวันที่เพื่อดูการใช้ห้องประชุม</div>
+        <div class="brand-sub">มุมมองรายวัน (ภายใน 2 วันจากวันที่เลือก)</div>
       </div>
     </div>
     <div class="who" id="who">
@@ -241,8 +254,9 @@
 
   <fieldset class="filters">
     <div>
-      <label>วันที่</label>
+      <label>วันที่เริ่มต้น</label>
       <input type="date" id="date">
+      <div class="hint">จะแสดงถึงอีก 2 วันถัดไป (รวม 3 วัน)</div>
     </div>
     <div>
       <label>ห้อง (ว่าง = แสดงทุกห้อง)</label>
@@ -250,7 +264,7 @@
     </div>
     <div>
       <label>&nbsp;</label>
-      <button id="load">โหลดวันนี้</button>
+      <button id="load">โหลดข้อมูล</button>
     </div>
   </fieldset>
 
@@ -261,246 +275,10 @@
 </div>
 
 <script>
+  // ===== CONFIG =====
   const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
   const POLL_SEC = 7;
+  // ==================
 
   let allRooms = [];
-  let allItems = [];
-  let pollTimer = null;
-  let lastHash = '';
-
-  const $ = id => document.getElementById(id);
-  const log = t => { const el=$('debug'); if(el) el.textContent += t+'\n'; };
-  const msg = (t, cls='') => { const el=$('msg'); el.textContent=t; el.className='hint '+cls; };
-  const toDateStr = d => d.toISOString().slice(0,10);
-  const nowStamp = ()=> new Date().toLocaleString();
-
-  function formatDateDMY(dateStr){
-    if(!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return '-';
-    const [y,m,d] = dateStr.split('-');
-    return `${d} - ${m} - ${y}`;
-  }
-
-  function parseDateTimeLocal(dateStr, timeStr){
-    const t = (timeStr && /^\d{2}:\d{2}$/.test(timeStr)) ? timeStr : '00:00';
-    return new Date(`${dateStr}T${t}:00`);
-  }
-
-  function itemsHash(items){
-    return JSON.stringify(items.map(x=>[
-      x.ref,x.room_id,x.date,x.start,x.end,x.by,x.purpose,x.status
-    ]).sort());
-  }
-
-  async function api(path, opt = {}){
-    const url = API + path + (path.includes('?') ? '&' : '?') + 'v=' + Date.now();
-    log('API: '+url+' method='+(opt.method||'GET'));
-    const res = await fetch(url, {
-      method: opt.method || 'GET',
-      body: opt.body || undefined,
-      mode: 'cors',
-      credentials: 'omit',
-      cache: 'no-store',
-      redirect: 'follow',
-      referrerPolicy: 'no-referrer'
-    });
-    const raw = await res.text().catch(()=> '');
-    log('HTTP: '+res.status+' RAW: '+raw.slice(0,200));
-    if(!res.ok) throw new Error('HTTP '+res.status+' '+raw.slice(0,200));
-    try { return JSON.parse(raw); } catch { throw new Error('BAD JSON: '+raw.slice(0,200)); }
-  }
-
-  async function loadRooms(){
-    const d = await api('?action=rooms');
-    allRooms = (d.rooms||[]).map(r=>({
-      room_id:r.room_id,
-      room_name:r.room_name || r.room_id
-    }));
-    const sel = $('room');
-    sel.innerHTML = '<option value="">(ทุกห้อง)</option>';
-    allRooms.forEach(r=>{
-      const o = document.createElement('option');
-      o.value = r.room_id;
-      o.textContent = r.room_name;
-      sel.appendChild(o);
-    });
-  }
-
-  async function loadAllBookings(){
-    const date = $('date').value;
-    const roomPick = $('room').value || '';
-
-    if(!date) return;
-
-    let path = '?action=calendar&date_from='+date+'&date_to='+date;
-    if(roomPick) path += '&room_id='+encodeURIComponent(roomPick);
-
-    const d = await api(path);
-    allItems = (d.items||[]).map(x=>({
-      ...x,
-      status:'confirmed'
-    }));
-  }
-
-  function effectiveStatus(it){
-    try{
-      const now = new Date();
-      const s = parseDateTimeLocal(it.date, it.start);
-      const validEnd = it.end && /^\d{2}:\d{2}$/.test(it.end);
-      const e = validEnd ? parseDateTimeLocal(it.date, it.end)
-                         : new Date(s.getTime() + 60*60*1000);
-      if(now < s) return { label:'wait', cls:'status-wait' };
-      if(now >= s && now <= e) return { label:'กำลังประชุม', cls:'status-ongoing' };
-      return { label:'confirmed', cls:'status-confirmed' };
-    }catch{
-      return { label:'confirmed', cls:'status-confirmed' };
-    }
-  }
-
-  function statusBadge(it){
-    const s = effectiveStatus(it);
-    return `<span class="status-badge ${s.cls}">${s.label}</span>`;
-  }
-
-  const TL_START = 7, TL_END = 20, TL_SPAN = (TL_END - TL_START) * 60;
-  const hmToMinutes = hm => {
-    const [h,m] = (hm||'00:00').split(':').map(Number);
-    return h*60 + m;
-  };
-  const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
-
-  function renderTimeline(roomId, itemsForRoomOnDate, dateStr){
-    let head = `<div class="timeline-head">
-      <span>${formatDateDMY(dateStr)}</span>
-      <span>เวลา ${String(TL_START).padStart(2,'0')}:00 - ${TL_END}:00</span>
-    </div>`;
-    let html = '<div class="timeline">';
-    for(let hr=TL_START+1; hr<=TL_END-1; hr++){
-      const left = ((hr - TL_START) / (TL_END - TL_START)) * 100;
-      html += `<div class="tick" style="left:${left}%"></div>`;
-    }
-    itemsForRoomOnDate.forEach(it=>{
-      const sM = hmToMinutes(it.start||'00:00');
-      const eM = hmToMinutes(it.end||'00:00') || sM+60;
-      const sC = clamp(sM, TL_START*60, TL_END*60);
-      const eC = clamp(eM, TL_START*60, TL_END*60);
-      const leftPct  = ((sC - TL_START*60) / TL_SPAN) * 100;
-      const widthPct = (Math.max(eC - sC, 10) / TL_SPAN) * 100;
-
-      const on = effectiveStatus(it).cls === 'status-ongoing';
-      html += `<div class="slot ${on?'ongoing':''}"
-                  title="${it.start||'-'}-${it.end||'-'} • ${it.by||'-'}"
-                  style="left:${leftPct}%;width:${widthPct}%">
-                  ${it.start||'-'}-${it.end||'-'} • ${it.by||'-'}
-               </div>`;
-    });
-    html += '</div><div class="timeline-legend">* แถบสีแสดงช่วงเวลาที่ถูกจองของห้องนี้ในวันเดียวกัน</div>';
-    return '<div class="timeline-wrap">'+head+html+'</div>';
-  }
-
-  function renderDashboard(){
-    const date = $('date').value;
-    const roomPick = $('room').value;
-
-    const filtered = allItems.filter(it=>{
-      if(date && it.date !== date) return false;
-      if(roomPick && it.room_id !== roomPick) return false;
-      return true;
-    });
-
-    const byRoom = new Map();
-    filtered.forEach(it=>{
-      if(!byRoom.has(it.room_id)) byRoom.set(it.room_id, []);
-      byRoom.get(it.room_id).push(it);
-    });
-    for(const arr of byRoom.values()){
-      arr.sort((a,b)=> (a.start||'').localeCompare(b.start||''));
-    }
-
-    const roomList = roomPick
-      ? allRooms.filter(r=>byRoom.has(r.room_id))
-      : allRooms.slice().sort((a,b)=> (a.room_name||'').localeCompare(b.room_name||''));
-
-    if(roomList.length===0){
-      $('dashboard').innerHTML = '<div class="empty">ไม่มีข้อมูลของวันที่เลือก</div>';
-      return;
-    }
-
-    let html = '<div class="grid">';
-    roomList.forEach(r=>{
-      const items = byRoom.get(r.room_id) || [];
-      html += `<div class="card">
-        <h3>${r.room_name}</h3>
-        ${renderTimeline(r.room_id, items, date)}
-        <div class="hint">รายการ ${items.length} รายการ (มุมมองรายวัน)</div>
-        ${items.length ? `
-          <table>
-            <thead><tr>
-              <th style="width:140px">เวลา</th>
-              <th>ผู้จอง</th>
-              <th>วัตถุประสงค์</th>
-              <th style="width:110px">สถานะ</th>
-            </tr></thead>
-            <tbody>
-              ${items.map(it=>`
-                <tr>
-                  <td>${(it.start||'-')+'-'+(it.end||'-')}</td>
-                  <td>${it.by||'-'}</td>
-                  <td>${it.purpose||'-'}</td>
-                  <td>${statusBadge(it)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        ` : `<div class="empty">ยังไม่มีการจองในวันนี้</div>`}
-      </div>`;
-    });
-    html += '</div>';
-
-    $('dashboard').innerHTML = html;
-  }
-
-  async function tick(force=false){
-    msg('กำลังโหลดข้อมูล...', '');
-    try{
-      await loadAllBookings();
-      const h = itemsHash(allItems);
-      if(force || h !== lastHash){
-        lastHash = h;
-        renderDashboard();
-      }
-      $('stamp').textContent = 'อัปเดตล่าสุด: ' + nowStamp();
-      msg('โหมดเรียลไทม์กำลังทำงาน', 'ok');
-    }catch(e){
-      $('stamp').textContent = 'อัปเดตล้มเหลว: ' + String(e);
-      msg('❌ โหลดข้อมูลไม่สำเร็จ: '+String(e), 'bad');
-    }
-  }
-
-  function schedule(){
-    if(pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(()=>tick(false), POLL_SEC*1000);
-  }
-
-  document.addEventListener('DOMContentLoaded', async ()=>{
-    const today = new Date();
-    $('date').value = toDateStr(today);
-
-    try{
-      await loadRooms();
-    }catch(e){
-      msg('❌ โหลดรายชื่อห้องไม่สำเร็จ: '+String(e), 'bad');
-    }
-
-    await tick(true);
-    schedule();
-
-    $('load').onclick = ()=> tick(true);
-    $('room').onchange = ()=>{ tick(true); schedule(); };
-    $('date').onchange = ()=>{ tick(true); schedule(); };
-
-    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) tick(true); });
-  });
-</script>
-</body>
-</html>
+  let allItems =
