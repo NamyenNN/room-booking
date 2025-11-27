@@ -84,7 +84,7 @@
   button{cursor:pointer}
   .filters{
     display:grid;
-    grid-template-columns:1fr 1fr 1fr auto auto;
+    grid-template-columns:1fr 1fr 1fr auto; /* เหลือ 4 ช่อง */
     gap:8px;
     align-items:end;
   }
@@ -266,10 +266,6 @@
       <label>&nbsp;</label>
       <button id="load">โหลดตอนนี้</button>
     </div>
-    <div>
-      <label>อัปเดตทุก (วินาที)</label>
-      <input type="number" id="interval" min="3" step="1" value="7">
-    </div>
   </fieldset>
 
   <div id="msg" class="hint"></div>
@@ -281,6 +277,7 @@
 <script>
   // ===== ตั้งค่าให้ตรงกับระบบของคุณ =====
   const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
+  const POLL_SEC = 7; // อัปเดตทุก 7 วินาที (ซ่อนไว้ ไม่โชว์หน้าเว็บ)
   // ======================================
 
   let allRooms = [];
@@ -432,7 +429,7 @@
                   ${it.start||'-'}-${it.end||'-'} • ${it.by||'-'}
                </div>`;
     });
-    html += '</div><div class="timeline-legend">* แถบสีแสดงช่วงเวลาที่ถูกจองของห้องนี้ในวันเดียวกัน</div>';
+    html += '</div><div class="timeline-legend">* แถบสีแสดงช่วงเวลาที่ถูกจองของห้องนี้ในวันเดียวกัน</div>`;
     return '<div class="timeline-wrap">'+head+html+'</div>';
   }
 
@@ -525,10 +522,10 @@
       $('stamp').textContent = 'อัปเดตล้มเหลว: ' + String(e);
     }
   }
+
   function schedule(){
     if(pollTimer) clearInterval(pollTimer);
-    const sec = Math.max(3, parseInt($('interval').value||'7',10));
-    pollTimer = setInterval(tick, sec*1000);
+    pollTimer = setInterval(tick, POLL_SEC*1000); // ใช้ค่าคงที่
   }
 
   // boot
@@ -541,7 +538,7 @@
 
     await loadRooms();
     await tick(true);  // ดึงครั้งแรก + แสดงผล
-    schedule();        // เริ่มโพล
+    schedule();        // เริ่มโพลทุก POLL_SEC วินาที
 
     // ปุ่ม “โหลดตอนนี้”
     $('load').onclick = ()=> tick(true);
@@ -550,7 +547,6 @@
     $('room').onchange = ()=>{ tick(true); schedule(); };
     $('date_from').onchange = ()=>{ tick(true); schedule(); };
     $('date_to').onchange = ()=>{ tick(true); schedule(); };
-    $('interval').onchange = ()=>{ schedule(); };
 
     // กลับมาโฟกัสหน้า → อัปเดตทันที
     document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) tick(true); });
