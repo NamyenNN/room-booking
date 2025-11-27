@@ -1,29 +1,121 @@
 <!doctype html>
 <html lang="th">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>การจองของฉัน / ยกเลิก</title>
 <style>
-  body{font-family:system-ui,Segoe UI,Arial;padding:16px;max-width:720px;margin:auto}
-  h1{margin:0 0 12px}
-  .card{border:1px solid #ddd;border-radius:10px;padding:12px;margin:10px 0}
-  .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  button{padding:10px;border:1px solid #ccc;border-radius:8px;width:100%}
-  .danger{border-color:#b00020;color:#b00020}
-  .hint{font-size:12px;color:#666}
-  details{margin-top:14px}
-  pre{white-space:pre-wrap}
+  body{
+    font-family:system-ui,Segoe UI,Arial;
+    padding:16px;
+    max-width:720px;
+    margin:auto;
+    background:#f3f4f6; /* พื้นหลังเทาอ่อน ให้ฟีลเหมือนหน้าเว็บจอง */
+  }
+  .card{
+    border:1px solid #e5e7eb;
+    border-radius:16px;
+    padding:16px 20px 20px;
+    margin:10px 0;
+    background:#ffffff;
+    box-shadow:0 10px 25px rgba(15,23,42,0.08);
+  }
+  .topbar{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    margin-bottom:12px;
+  }
+  .brand-logo{
+    width:44px;
+    height:44px;
+    border-radius:12px;
+    object-fit:cover;
+    border:1px solid #e5e7eb;
+    background:#fff;
+  }
+  .brand-title{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  h1{
+    margin:0;
+    font-size:20px;
+  }
+  .brand-sub{
+    font-size:12px;
+    color:#64748b;
+  }
+
+  .card-booking{
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+    padding:12px;
+    margin:10px 0;
+    background:#f9fafb;
+  }
+  .row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  @media(max-width:600px){
+    .row{
+      grid-template-columns:1fr;
+    }
+  }
+  button{
+    padding:10px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    width:100%;
+    font:inherit;
+    cursor:pointer;
+    background:#ffffff;
+  }
+  button.danger{
+    border-color:#b00020;
+    color:#b00020;
+  }
+  .hint{
+    font-size:12px;
+    color:#666;
+  }
+  #msg{
+    margin-top:4px;
+  }
+  details{
+    margin-top:14px;
+    font-size:12px;
+  }
+  pre{
+    white-space:pre-wrap;
+  }
 </style>
+<link rel="icon" type="image/png" href="https://namyennn.github.io/room-booking/LOGOCS.png?v=1">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
-<h1>การจองของฉัน / ยกเลิก</h1>
-<p class="hint">รายการด้านล่างคือการจองที่สถานะยังไม่ถูกยกเลิก</p>
+<div class="card">
+  <div class="topbar">
+    <img src="https://namyennn.github.io/room-booking/LOGOCS.png?v=1" alt="Logo" class="brand-logo">
+    <div class="brand-title">
+      <h1>การจองของฉัน / ยกเลิก</h1>
+      <div class="brand-sub">ดูสถานะการจอง และยกเลิกการจองที่ยังไม่หมดเวลา</div>
+    </div>
+  </div>
 
-<div id="list"></div>
-<p id="msg" class="hint"></p>
+  <p class="hint">รายการด้านล่างคือการจองที่สถานะยังไม่ถูกยกเลิก</p>
 
-<details><summary>DEBUG</summary><pre id="debug"></pre></details>
+  <div id="list"></div>
+  <p id="msg" class="hint"></p>
+
+  <details>
+    <summary>DEBUG</summary>
+    <pre id="debug"></pre>
+  </details>
+</div>
 
 <script>
   // ===== ตั้งค่าของคุณ (ต้องตรงกับ booking.html) =====
@@ -67,10 +159,14 @@
     try{
       const d = await api(`?action=my_bookings&line_user=${encodeURIComponent(lineUserId)}`);
       const items = (d && d.items) || [];
-      if(items.length===0){ box.innerHTML='(ยังไม่มีการจองที่ใช้งานอยู่)'; return; }
+      if(items.length===0){
+        box.innerHTML='(ยังไม่มีการจองที่ใช้งานอยู่)';
+        return;
+      }
       box.innerHTML='';
       items.forEach(it=>{
-        const div = document.createElement('div'); div.className='card';
+        const div = document.createElement('div');
+        div.className='card-booking';
         div.innerHTML = `
           <div><b>Ref:</b> ${it.ref}</div>
           <div class="row">
@@ -82,7 +178,9 @@
             <div><b>ผู้จอง:</b> ${it.by||'-'}</div>
           </div>
           <div><b>วัตถุประสงค์:</b> ${it.purpose||'-'}</div>
-          <div style="margin-top:8px"><button class="danger" data-ref="${it.ref}">ยกเลิกการจองนี้</button></div>
+          <div style="margin-top:8px">
+            <button class="danger" data-ref="${it.ref}">ยกเลิกการจองนี้</button>
+          </div>
         `;
         box.appendChild(div);
       });
