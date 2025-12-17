@@ -216,7 +216,8 @@
 </div>
 
 <script>
-  // ===== ตั้งค่าให้ตรงกับ booking.html / my.html =====
+  // ===== ตั้งค่าให้ตรงกับ Apps Script Deployment ล่าสุด =====
+  // ❗ ใส่ URL /exec ของน้ำเย็น (ตัวล่าสุดหลัง Deploy)
   const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
   // ================================================
 
@@ -256,7 +257,6 @@
     $('loginText').textContent = text;
   }
 
-  // fetch helper (กันแคช + ไม่ตั้ง header ตอน POST เพื่อเลี่ยง preflight)
   async function api(path, opt = {}){
     const url = API + path + (path.includes('?')?'&':'?') + 'v=' + Date.now();
     log('API: '+url+' method='+(opt.method||'GET'));
@@ -267,19 +267,16 @@
       redirect: 'follow', referrerPolicy: 'no-referrer'
     });
     const raw = await res.text().catch(()=> '');
-    log('HTTP: '+res.status+' RAW: '+raw.slice(0,160));
+    log('HTTP: '+res.status+' RAW: '+raw.slice(0,200));
     if(!res.ok) throw new Error('HTTP '+res.status+' '+raw.slice(0,220));
     try { return JSON.parse(raw); } catch { throw new Error('BAD JSON: '+raw.slice(0,220)); }
   }
 
-  // ===== LOGIN: ต้องให้ Apps Script รองรับ action=adminLogin =====
+  // ===== LOGIN: Apps Script ต้องมี action=adminLogin (user/pass) =====
   async function adminLogin(user, pass){
-    // แนะนำให้ฝั่ง GAS ตรวจ user/pass แล้วคืน token
-    // response ตัวอย่าง: { ok:true, token:"....", user:"admin" }
     return await api(`?action=adminLogin&user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`);
   }
 
-  // โหลดห้องเพื่อทำตัวกรอง
   async function loadRooms(){
     const d = await api('?action=rooms');
     const sel = $('room');
@@ -290,7 +287,7 @@
     });
   }
 
-  // โหลดข้อมูลช่วงวัน/ห้อง
+  // ✅ FIX: ใช้ admin_calendar แทน calendar
   async function loadTable(){
     if(!isAuthed()){
       msg('กรุณาเข้าสู่ระบบแอดมินก่อน', 'bad');
@@ -306,11 +303,9 @@
 
     msg('กำลังโหลด...', '');
     try{
-      // ถ้าฝั่ง GAS บังคับ auth กับ calendar ให้ใช้ token ได้เลย
-      const d = await api(`?action=calendar&room_id=${encodeURIComponent(room)}&date_from=${encodeURIComponent(f)}&date_to=${encodeURIComponent(t)}&token=${encodeURIComponent(token)}`);
+      const d = await api(`?action=admin_calendar&room_id=${encodeURIComponent(room)}&date_from=${encodeURIComponent(f)}&date_to=${encodeURIComponent(t)}&token=${encodeURIComponent(token)}`);
       let items = d.items || [];
 
-      // filter search client-side
       if(q){
         items = items.filter(it=>{
           const hay = `${it.by||''} ${it.purpose||''} ${it.room_id||''} ${it.ref||''}`.toLowerCase();
@@ -321,9 +316,8 @@
       renderTable(items);
       msg(`โหลดแล้ว ${items.length} รายการ`, 'ok');
     }catch(e){
-      // ถ้า token หมดอายุ/ไม่ถูก ให้เด้ง login ใหม่
       const s = String(e||'');
-      if(s.toLowerCase().includes('token') || s.toLowerCase().includes('unauth') || s.toLowerCase().includes('login')){
+      if(s.toLowerCase().includes('unauthorized') || s.toLowerCase().includes('token') || s.toLowerCase().includes('login')){
         clearToken();
         openLogin();
         msg('Session หมดอายุ หรือไม่ได้รับอนุญาต — กรุณา login ใหม่', 'bad');
@@ -356,7 +350,6 @@
     html += '</tbody></table>';
     $('tablebox').innerHTML = html;
 
-    // bind ปุ่มยกเลิก
     document.querySelectorAll('button.danger').forEach(btn=>{
       btn.onclick = ()=> cancelAdmin(btn.getAttribute('data-ref'));
     });
@@ -373,8 +366,6 @@
     msg('กำลังยกเลิก...', '');
     try{
       const token = getToken();
-
-      // ส่งแบบ form-urlencoded: payload=<json> → เลี่ยง preflight
       const form = new URLSearchParams();
       form.set('payload', JSON.stringify({ action:'cancel_admin', ref, token }));
 
@@ -387,7 +378,7 @@
       }
     }catch(e){
       const s = String(e||'');
-      if(s.toLowerCase().includes('token') || s.toLowerCase().includes('unauth') || s.toLowerCase().includes('login')){
+      if(s.toLowerCase().includes('unauthorized') || s.toLowerCase().includes('token') || s.toLowerCase().includes('login')){
         clearToken();
         openLogin();
         msg('Session หมดอายุ หรือไม่ได้รับอนุญาต — กรุณา login ใหม่', 'bad');
@@ -397,20 +388,16 @@
     }
   }
 
-  // ===== events =====
   document.addEventListener('DOMContentLoaded', async ()=>{
-    // preload วันที่: วันนี้ → อีก 14 วัน
     const today = new Date();
     const twoW  = new Date(); twoW.setDate(today.getDate()+14);
     $('date_from').value = toDateStr(today);
     $('date_to').value   = toDateStr(twoW);
 
-    // rooms
     try { await loadRooms(); } catch(e){ msg('โหลดห้องไม่สำเร็จ: '+String(e), 'bad'); }
 
     $('load').onclick = loadTable;
 
-    // login modal buttons
     $('btnLogin').onclick = async ()=>{
       const u = $('admin_user').value.trim();
       const p = $('admin_pass').value;
@@ -432,7 +419,7 @@
         }else{
           setLoginChip('bad', 'ไม่ถูกต้อง');
         }
-      }catch(e){
+      }catch(_){
         setLoginChip('bad', 'login ไม่สำเร็จ');
       }
     };
@@ -444,7 +431,6 @@
       msg('ออกจากระบบแล้ว', '');
     };
 
-    // open/close modal by auth state
     if(isAuthed()) closeLogin();
     else openLogin();
   });
