@@ -3,129 +3,208 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>สถานะห้องประชุม</title>
+<title>สถานะห้องประชุม | ACS</title>
 
 <style>
-/* ===== THEME ===== */
-:root{
-  --bg:#ffffff;
-  --card:#f8fafc;
-  --line:#e5e7eb;
-  --text:#0f172a;
-  --muted:#64748b;
-  --free:#16a34a;
-  --busy:#dc2626;
-  --soon:#ca8a04;
-}
-[data-theme="dark"]{
-  --bg:#020617;
-  --card:#0f172a;
-  --line:#1e293b;
-  --text:#e5e7eb;
-  --muted:#94a3b8;
-  --free:#22c55e;
-  --busy:#ef4444;
-  --soon:#facc15;
-}
-/* ================= */
-
-body{
-  margin:0;
-  padding:24px;
-  font-family:system-ui,Segoe UI,Arial;
-  background:var(--bg);
-  color:var(--text);
+/* ===== MODERN THEME SYSTEM ===== */
+:root {
+  --bg: #f0f2f5;
+  --card: #ffffff;
+  --header-bg: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  --header-text: #ffffff;
+  --line: #e2e8f0;
+  --text: #1e293b;
+  --muted: #64748b;
+  --free: #10b981;
+  --busy: #ef4444;
+  --soon: #f59e0b;
+  --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:20px;
-  gap:16px;
-  flex-wrap:wrap;
-}
-.brand{
-  display:flex;
-  align-items:center;
-  gap:16px;
-}
-.brand img{
-  width:64px;height:64px;
-  border-radius:12px;
-  object-fit:contain;
-}
-.brand h1{
-  margin:0;
-  font-size:34px;
-  font-weight:900;
-}
-.brand .sub{
-  font-size:16px;
-  color:var(--muted);
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --header-bg: linear-gradient(135deg, #020617 0%, #1e293b 100%);
+  --line: #334155;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
 }
 
-.controls{
-  display:flex;
-  gap:10px;
-}
-button{
-  padding:10px 14px;
-  border-radius:12px;
-  border:1px solid var(--line);
-  background:var(--card);
-  font-weight:700;
-  cursor:pointer;
+/* ===== BASE STYLE ===== */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.3s ease;
+  min-height: 100vh;
 }
 
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
-  gap:20px;
+header {
+  background: var(--header-bg);
+  color: var(--header-text);
+  padding: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--shadow);
+  margin-bottom: 2rem;
+  border-bottom: 4px solid var(--soon);
 }
 
-.room{
-  background:var(--card);
-  border:1px solid var(--line);
-  border-radius:24px;
-  padding:24px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  box-shadow:0 15px 35px rgba(0,0,0,.15);
-}
-.room h2{
-  margin:0;
-  font-size:30px;
-  font-weight:900;
-}
-.status{
-  font-size:26px;
-  font-weight:900;
-}
-.free{color:var(--free);}
-.busy{color:var(--busy);}
-.soon{color:var(--soon);}
-
-.detail{
-  font-size:18px;
-  color:var(--muted);
-  line-height:1.5;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
-.next{
-  margin-top:8px;
-  padding-top:8px;
-  border-top:1px dashed var(--line);
-  font-size:16px;
-  color:var(--muted);
+.brand img {
+  width: 70px;
+  height: 70px;
+  border-radius: 15px;
+  background: white;
+  padding: 5px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
-footer{
-  margin-top:20px;
-  font-size:14px;
-  color:var(--muted);
-  text-align:right;
+.brand h1 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: -0.5px;
+}
+
+.brand .sub {
+  font-size: 16px;
+  opacity: 0.8;
+  font-weight: 300;
+}
+
+/* ===== CONTROLS ===== */
+.controls {
+  display: flex;
+  gap: 12px;
+}
+
+button {
+  padding: 10px 20px;
+  border-radius: 50px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.1);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s;
+}
+
+button:hover {
+  background: rgba(255,255,255,0.2);
+  transform: translateY(-2px);
+}
+
+/* ===== GRID & CARDS ===== */
+.container {
+  padding: 0 2rem 2rem 2rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 24px;
+}
+
+.room {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--shadow);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.room:hover {
+  transform: translateY(-5px);
+}
+
+.room h2 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.status {
+  font-size: 22px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Pulse Animation for Busy Status */
+.busy-pulse {
+  width: 12px;
+  height: 12px;
+  background-color: var(--busy);
+  border-radius: 50%;
+  display: inline-block;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.free { color: var(--free); }
+.busy { color: var(--busy); }
+.soon { color: var(--soon); }
+
+.detail {
+  font-size: 17px;
+  color: var(--muted);
+  line-height: 1.6;
+  background: var(--bg);
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.next {
+  margin-top: auto;
+  padding-top: 15px;
+  border-top: 2px dashed var(--line);
+  font-size: 15px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+footer {
+  padding: 2rem;
+  font-size: 14px;
+  color: var(--muted);
+  text-align: center;
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  header { flex-direction: column; text-align: center; }
+  .brand { flex-direction: column; }
+  .grid { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -134,31 +213,30 @@ footer{
 
 <header>
   <div class="brand">
-    <!-- 🔴 แก้โลโก้โรงเรียนตรงนี้ -->
     <img src="https://namyennn.github.io/room-booking/LOGOCS.png" alt="School Logo">
     <div>
-      <!-- 🔴 แก้ชื่อโรงเรียนตรงนี้ -->
-      <h1>Assumption college sriracha By CS</h1>
-      <div class="sub">ระบบแสดงสถานะห้องประชุม</div>
+      <h1>Assumption College Sriracha</h1>
+      <div class="sub">Conference Room Real-time Status By CS</div>
     </div>
   </div>
 
   <div class="controls">
-    <button id="btnTheme">🌙 Dark</button>
+    <button id="btnTheme">🌙 Dark Mode</button>
     <button id="btnFS">⛶ Fullscreen</button>
   </div>
 </header>
 
-<div id="grid" class="grid"></div>
+<main class="container">
+  <div id="grid" class="grid"></div>
+</main>
 
-<footer id="updated">กำลังโหลดข้อมูล…</footer>
+<footer id="updated">กำลังเชื่อมต่อข้อมูล...</footer>
 
 <script>
-/* ===== CONFIG ===== */
+/* ===== CONFIG (คงเดิม) ===== */
 const API = 'https://script.google.com/macros/s/AKfycbyKKtN_gWMWEW30eCjgfWSfF9m1AWPtYweRoPV7VPkPx21HoyhQO5oGGkbi08VsmcxCIQ/exec';
 const REFRESH_SEC = 15;
 const SOON_MIN = 15;
-/* ================= */
 
 function minutes(t){
   const [h,m]=t.split(':').map(Number);
@@ -170,12 +248,16 @@ function nowMin(){
 }
 
 async function load(){
-  const today=new Date().toISOString().slice(0,10);
-  const r=await fetch(`${API}?action=calendar&date_from=${today}&date_to=${today}&v=${Date.now()}`);
-  const d=await r.json();
-  render(d.items||[]);
-  document.getElementById('updated').textContent =
-    'อัปเดตล่าสุด '+new Date().toLocaleTimeString();
+  try {
+    const today=new Date().toISOString().slice(0,10);
+    const r=await fetch(`${API}?action=calendar&date_from=${today}&date_to=${today}&v=${Date.now()}`);
+    const d=await r.json();
+    render(d.items||[]);
+    document.getElementById('updated').innerHTML = 
+      `<span>●</span> อัปเดตล่าสุด: ${new Date().toLocaleTimeString('th-TH')}`;
+  } catch (e) {
+    document.getElementById('updated').textContent = "เกิดข้อผิดพลาดในการโหลดข้อมูล";
+  }
 }
 
 function render(items){
@@ -192,7 +274,7 @@ function render(items){
 
   Object.keys(byRoom).forEach(room=>{
     const list=byRoom[room].sort((a,b)=>minutes(a.start)-minutes(b.start));
-    let cls='free', status='ว่าง', detail='ไม่มีการจอง', next='';
+    let cls='free', status='ว่าง (Available)', detail='ไม่มีรายการจองในขณะนี้', next='', dot='';
 
     for(let i=0;i<list.length;i++){
       const b=list[i];
@@ -201,8 +283,9 @@ function render(items){
       if(now>=s && now<e){
         cls='busy';
         const left=e-now;
-        status=`🔴 กำลังใช้งาน (${left} นาที)`;
-        detail=`${b.start} – ${b.end}<br>${b.by||''}`;
+        dot = '<span class="busy-pulse"></span> ';
+        status=`กำลังใช้งาน (${left} นาที)`;
+        detail=`<b>หัวข้อ:</b> ${b.by||'ไม่ระบุ'}<br><b>เวลา:</b> ${b.start} – ${b.end}`;
         if(list[i+1]){
           const n=list[i+1];
           next=`ถัดไป: ${n.start} – ${n.end} (${n.by||''})`;
@@ -211,8 +294,8 @@ function render(items){
       }
       if(now<s && s-now<=SOON_MIN){
         cls='soon';
-        status=`🟡 เริ่มใน ${s-now} นาที`;
-        detail=`${b.start} – ${b.end}<br>${b.by||''}`;
+        status=`จะเริ่มใน ${s-now} นาที`;
+        detail=`<b>เตรียมตัว:</b> ${b.by||''}<br><b>เวลา:</b> ${b.start} – ${b.end}`;
         next=list[i+1] ? `ถัดไป: ${list[i+1].start} – ${list[i+1].end}` : '';
         break;
       }
@@ -222,35 +305,32 @@ function render(items){
     el.className='room';
     el.innerHTML=`
       <h2>${room}</h2>
-      <div class="status ${cls}">${status}</div>
+      <div class="status ${cls}">${dot}${status}</div>
       <div class="detail">${detail}</div>
-      ${next?`<div class="next">📌 ${next}</div>`:''}
+      ${next?`<div class="next">🗓️ ${next}</div>`:''}
     `;
     grid.appendChild(el);
   });
 }
 
-/* ===== THEME ===== */
+/* ===== THEME TOGGLE ===== */
 const btnTheme=document.getElementById('btnTheme');
 btnTheme.onclick=()=>{
   const b=document.body;
-  const dark=b.getAttribute('data-theme')==='dark';
-  b.setAttribute('data-theme',dark?'light':'dark');
-  btnTheme.textContent=dark?'🌙 Dark':'☀️ Light';
+  const isDark = b.getAttribute('data-theme')==='dark';
+  b.setAttribute('data-theme', isDark ? 'light':'dark');
+  btnTheme.textContent = isDark ? '🌙 Dark Mode' : '☀️ Light Mode';
 };
 
 /* ===== FULLSCREEN ===== */
 document.getElementById('btnFS').onclick=()=>{
-  if(!document.fullscreenElement){
-    document.documentElement.requestFullscreen();
-  }else{
-    document.exitFullscreen();
-  }
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
 };
 
 /* ===== START ===== */
 load();
-setInterval(load,REFRESH_SEC*1000);
+setInterval(load, REFRESH_SEC * 1000);
 </script>
 
 </body>
