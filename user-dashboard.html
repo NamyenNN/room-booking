@@ -233,13 +233,15 @@ footer {
 <footer id="updated">กำลังเชื่อมต่อข้อมูล...</footer>
 
 <script>
-/* ===== CONFIG (คงเดิม) ===== */
+/* ===== CONFIG ===== */
 const API = 'https://script.google.com/macros/s/AKfycbyKKtN_gWMWEW30eCjgfWSfF9m1AWPtYweRoPV7VPkPx21HoyhQO5oGGkbi08VsmcxCIQ/exec';
 const REFRESH_SEC = 15;
 const SOON_MIN = 15;
 
+let ALL_ROOMS = []; // [{room_id, room_name, ...}]
+
 function minutes(t){
-  const [h,m]=t.split(':').map(Number);
+  const [h,m]=String(t||'00:00').split(':').map(Number);
   return h*60+m;
 }
 function nowMin(){
@@ -247,13 +249,27 @@ function nowMin(){
   return d.getHours()*60+d.getMinutes();
 }
 
+async function fetchJson(url){
+  const r = await fetch(url, { cache:'no-store' });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return await r.json();
+}
+
+async function loadRoomsOnce(){
+  // โหลดชื่อห้องทั้งหมดไว้ก่อน เพื่อโชว์ “ทุกห้อง” เสมอ
+  const d = await fetchJson(`${API}?action=rooms&v=${Date.now()}`);
+  ALL_ROOMS = Array.isArray(d.rooms) ? d.rooms : [];
+}
+
 async function load(){
   try {
+    if(!ALL_ROOMS.length) await loadRoomsOnce();
+
     const today=new Date().toISOString().slice(0,10);
-    const r=await fetch(`${API}?action=calendar&date_from=${today}&date_to=${today}&v=${Date.now()}`);
-    const d=await r.json();
+    const d = await fetchJson(`${API}?action=calendar&date_from=${today}&date_to=${today}&v=${Date.now()}`);
     render(d.items||[]);
-    document.getElementById('updated').innerHTML = 
+
+    document.getElementById('updated').innerHTML =
       `<span>●</span> อัปเดตล่าสุด: ${new Date().toLocaleTimeString('th-TH')}`;
   } catch (e) {
     document.getElementById('updated').textContent = "เกิดข้อผิดพลาดในการโหลดข้อมูล";
@@ -264,47 +280,74 @@ function render(items){
   const grid=document.getElementById('grid');
   grid.innerHTML='';
 
+  // group bookings by room_id
   const byRoom={};
-  items.forEach(it=>{
+  (items||[]).forEach(it=>{
     if(!byRoom[it.room_id]) byRoom[it.room_id]=[];
     byRoom[it.room_id].push(it);
   });
 
   const now=nowMin();
 
-  Object.keys(byRoom).forEach(room=>{
-    const list=byRoom[room].sort((a,b)=>minutes(a.start)-minutes(b.start));
-    let cls='free', status='ว่าง (Available)', detail='ไม่มีรายการจองในขณะนี้', next='', dot='';
+  // ✅ วนจาก “รายชื่อห้องทั้งหมด” ไม่ใช่จาก items
+  ALL_ROOMS.forEach(roomObj=>{
+    const roomId = roomObj.room_id;
+    const roomTitle = roomObj.room_name ? roomObj.room_name : roomId;
 
-    for(let i=0;i<list.length;i++){
-      const b=list[i];
-      const s=minutes(b.start), e=minutes(b.end);
+    const list=(byRoom[roomId] || []).sort((a,b)=>minutes(a.start)-minutes(b.start));
 
-      if(now>=s && now<e){
-        cls='busy';
-        const left=e-now;
-        dot = '<span class="busy-pulse"></span> ';
-        status=`กำลังใช้งาน (${left} นาที)`;
-        detail=`<b>หัวข้อ:</b> ${b.by||'ไม่ระบุ'}<br><b>เวลา:</b> ${b.start} – ${b.end}`;
-        if(list[i+1]){
-          const n=list[i+1];
-          next=`ถัดไป: ${n.start} – ${n.end} (${n.by||''})`;
+    // default = ไม่มีการใช้งาน
+    let cls='free',
+        status='ไม่มีการใช้งาน (No Usage)',
+        detail='ไม่มีรายการจองในขณะนี้',
+        next='',
+        dot='';
+
+    // หา current/soon/next
+    if(list.length){
+      for(let i=0;i<list.length;i++){
+        const b=list[i];
+        const s=minutes(b.start), e=minutes(b.end);
+
+        if(now>=s && now<e){
+          cls='busy';
+          const left=e-now;
+          dot = '<span class="busy-pulse"></span> ';
+          status=`กำลังใช้งาน (เหลือ ${left} นาที)`;
+          detail=`<b>ผู้จอง:</b> ${b.by||'ไม่ระบุ'}<br><b>เวลา:</b> ${b.start} – ${b.end}`;
+
+          if(list[i+1]){
+            const n=list[i+1];
+            next=`ถัดไป: ${n.start} – ${n.end} (${n.by||''})`;
+          }
+          break;
         }
-        break;
-      }
-      if(now<s && s-now<=SOON_MIN){
-        cls='soon';
-        status=`จะเริ่มใน ${s-now} นาที`;
-        detail=`<b>เตรียมตัว:</b> ${b.by||''}<br><b>เวลา:</b> ${b.start} – ${b.end}`;
-        next=list[i+1] ? `ถัดไป: ${list[i+1].start} – ${list[i+1].end}` : '';
-        break;
+
+        if(now<s && s-now<=SOON_MIN){
+          cls='soon';
+          status=`จะเริ่มใน ${s-now} นาที`;
+          detail=`<b>ผู้จอง:</b> ${b.by||'ไม่ระบุ'}<br><b>เวลา:</b> ${b.start} – ${b.end}`;
+          if(list[i+1]){
+            const n=list[i+1];
+            next=`ถัดไป: ${n.start} – ${n.end} (${n.by||''})`;
+          }
+          break;
+        }
+
+        // ถ้าทั้งวันยังไม่เข้าเงื่อนไข busy/soon ให้โชว์ "รายการถัดไปของวัน"
+        if(i === 0 && now < minutes(b.start)){
+          next=`ถัดไป: ${b.start} – ${b.end} (${b.by||''})`;
+          // status/cls ยังเป็น free (ไม่มีการใช้งานตอนนี้)
+          detail='ขณะนี้ว่าง';
+          break;
+        }
       }
     }
 
     const el=document.createElement('div');
     el.className='room';
     el.innerHTML=`
-      <h2>${room}</h2>
+      <h2>${roomTitle}</h2>
       <div class="status ${cls}">${dot}${status}</div>
       <div class="detail">${detail}</div>
       ${next?`<div class="next">🗓️ ${next}</div>`:''}
