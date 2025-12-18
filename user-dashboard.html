@@ -3,100 +3,150 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>สถานะห้องประชุม (Live)</title>
+<title>สถานะห้องประชุม</title>
 
 <style>
-  :root{
-    --bg:#020617;
-    --card:#0f172a;
-    --line:#1e293b;
-    --text:#e5e7eb;
-    --muted:#94a3b8;
-    --free:#22c55e;
-    --busy:#ef4444;
-    --soon:#facc15;
-  }
+/* ===== THEME ===== */
+:root{
+  --bg:#ffffff;
+  --card:#f8fafc;
+  --line:#e5e7eb;
+  --text:#0f172a;
+  --muted:#64748b;
+  --free:#16a34a;
+  --busy:#dc2626;
+  --soon:#ca8a04;
+}
+[data-theme="dark"]{
+  --bg:#020617;
+  --card:#0f172a;
+  --line:#1e293b;
+  --text:#e5e7eb;
+  --muted:#94a3b8;
+  --free:#22c55e;
+  --busy:#ef4444;
+  --soon:#facc15;
+}
+/* ================= */
 
-  body{
-    margin:0;
-    padding:32px;
-    font-family:system-ui,Segoe UI,Arial;
-    background:var(--bg);
-    color:var(--text);
-  }
+body{
+  margin:0;
+  padding:24px;
+  font-family:system-ui,Segoe UI,Arial;
+  background:var(--bg);
+  color:var(--text);
+}
 
-  header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:24px;
-    flex-wrap:wrap;
-    gap:12px;
-  }
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:20px;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:16px;
+}
+.brand img{
+  width:64px;height:64px;
+  border-radius:12px;
+  object-fit:contain;
+}
+.brand h1{
+  margin:0;
+  font-size:34px;
+  font-weight:900;
+}
+.brand .sub{
+  font-size:16px;
+  color:var(--muted);
+}
 
-  h1{
-    margin:0;
-    font-size:36px;
-    font-weight:900;
-    letter-spacing:.5px;
-  }
+.controls{
+  display:flex;
+  gap:10px;
+}
+button{
+  padding:10px 14px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:var(--card);
+  font-weight:700;
+  cursor:pointer;
+}
 
-  .time{
-    font-size:18px;
-    color:var(--muted);
-  }
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+  gap:20px;
+}
 
-  .grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
-    gap:24px;
-  }
+.room{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:24px;
+  padding:24px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  box-shadow:0 15px 35px rgba(0,0,0,.15);
+}
+.room h2{
+  margin:0;
+  font-size:30px;
+  font-weight:900;
+}
+.status{
+  font-size:26px;
+  font-weight:900;
+}
+.free{color:var(--free);}
+.busy{color:var(--busy);}
+.soon{color:var(--soon);}
 
-  .room{
-    background:var(--card);
-    border-radius:24px;
-    padding:24px;
-    border:1px solid var(--line);
-    box-shadow:0 20px 40px rgba(0,0,0,.4);
-    display:flex;
-    flex-direction:column;
-    gap:14px;
-  }
+.detail{
+  font-size:18px;
+  color:var(--muted);
+  line-height:1.5;
+}
 
-  .room h2{
-    margin:0;
-    font-size:28px;
-    font-weight:800;
-  }
+.next{
+  margin-top:8px;
+  padding-top:8px;
+  border-top:1px dashed var(--line);
+  font-size:16px;
+  color:var(--muted);
+}
 
-  .status{
-    font-size:26px;
-    font-weight:900;
-  }
-  .free{color:var(--free);}
-  .busy{color:var(--busy);}
-  .soon{color:var(--soon);}
-
-  .detail{
-    font-size:18px;
-    color:var(--muted);
-    line-height:1.5;
-  }
-
-  footer{
-    margin-top:24px;
-    font-size:14px;
-    color:var(--muted);
-    text-align:right;
-  }
+footer{
+  margin-top:20px;
+  font-size:14px;
+  color:var(--muted);
+  text-align:right;
+}
 </style>
 </head>
 
-<body>
+<body data-theme="light">
 
 <header>
-  <h1>📺 สถานะห้องประชุม</h1>
-  <div class="time" id="clock">--:--</div>
+  <div class="brand">
+    <!-- 🔴 แก้โลโก้โรงเรียนตรงนี้ -->
+    <img src="https://namyennn.github.io/room-booking/LOGOCS.png" alt="School Logo">
+    <div>
+      <!-- 🔴 แก้ชื่อโรงเรียนตรงนี้ -->
+      <h1>โรงเรียนของน้ำเย็น</h1>
+      <div class="sub">ระบบแสดงสถานะห้องประชุม</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="btnTheme">🌙 Dark</button>
+    <button id="btnFS">⛶ Fullscreen</button>
+  </div>
 </header>
 
 <div id="grid" class="grid"></div>
@@ -104,69 +154,67 @@
 <footer id="updated">กำลังโหลดข้อมูล…</footer>
 
 <script>
-/* ================= CONFIG ================= */
+/* ===== CONFIG ===== */
 const API = 'https://script.google.com/macros/s/AKfycbyKKtN_gWMWEW30eCjgfWSfF9m1AWPtYweRoPV7VPkPx21HoyhQO5oGGkbi08VsmcxCIQ/exec';
-const REFRESH_SEC = 10;   // อัปเดตทุกกี่วินาที
-const SOON_MIN = 15;      // กี่นาทีก่อนเริ่ม = ขึ้น "กำลังจะเริ่ม"
-/* ========================================= */
+const REFRESH_SEC = 15;
+const SOON_MIN = 15;
+/* ================= */
 
-function nowMinutes(){
-  const d=new Date();
-  return d.getHours()*60 + d.getMinutes();
+function minutes(t){
+  const [h,m]=t.split(':').map(Number);
+  return h*60+m;
 }
-
-function updateClock(){
+function nowMin(){
   const d=new Date();
-  document.getElementById('clock').textContent =
-    d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  return d.getHours()*60+d.getMinutes();
 }
 
 async function load(){
-  const today = new Date().toISOString().slice(0,10);
-  const res = await fetch(`${API}?action=calendar&date_from=${today}&date_to=${today}&v=${Date.now()}`);
-  const data = await res.json();
-  render(data.items || []);
+  const today=new Date().toISOString().slice(0,10);
+  const r=await fetch(`${API}?action=calendar&date_from=${today}&date_to=${today}&v=${Date.now()}`);
+  const d=await r.json();
+  render(d.items||[]);
   document.getElementById('updated').textContent =
-    'อัปเดตล่าสุด ' + new Date().toLocaleTimeString();
+    'อัปเดตล่าสุด '+new Date().toLocaleTimeString();
 }
 
 function render(items){
-  const grid = document.getElementById('grid');
-  grid.innerHTML = '';
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
 
-  if(!items.length){
-    grid.innerHTML = '<div style="color:#94a3b8;font-size:22px">ไม่มีรายการจองวันนี้</div>';
-    return;
-  }
-
-  const byRoom = {};
+  const byRoom={};
   items.forEach(it=>{
     if(!byRoom[it.room_id]) byRoom[it.room_id]=[];
     byRoom[it.room_id].push(it);
   });
 
-  const now = nowMinutes();
+  const now=nowMin();
 
   Object.keys(byRoom).forEach(room=>{
-    const bookings = byRoom[room];
-    let cls='free', text='ว่าง', detail='';
+    const list=byRoom[room].sort((a,b)=>minutes(a.start)-minutes(b.start));
+    let cls='free', status='ว่าง', detail='ไม่มีการจอง', next='';
 
-    for(const b of bookings){
-      const [sh,sm] = b.start.split(':').map(Number);
-      const [eh,em] = b.end.split(':').map(Number);
-      const s = sh*60+sm;
-      const e = eh*60+em;
+    for(let i=0;i<list.length;i++){
+      const b=list[i];
+      const s=minutes(b.start), e=minutes(b.end);
 
       if(now>=s && now<e){
         cls='busy';
-        text='🔴 กำลังใช้งาน';
+        const left=e-now;
+        status=`🔴 กำลังใช้งาน (${left} นาที)`;
         detail=`${b.start} – ${b.end}<br>${b.by||''}`;
+        if(list[i+1]){
+          const n=list[i+1];
+          next=`ถัดไป: ${n.start} – ${n.end} (${n.by||''})`;
+        }
         break;
       }
       if(now<s && s-now<=SOON_MIN){
         cls='soon';
-        text=`🟡 เริ่มใน ${s-now} นาที`;
+        status=`🟡 เริ่มใน ${s-now} นาที`;
         detail=`${b.start} – ${b.end}<br>${b.by||''}`;
+        next=list[i+1] ? `ถัดไป: ${list[i+1].start} – ${list[i+1].end}` : '';
+        break;
       }
     }
 
@@ -174,18 +222,35 @@ function render(items){
     el.className='room';
     el.innerHTML=`
       <h2>${room}</h2>
-      <div class="status ${cls}">${text}</div>
-      <div class="detail">${detail || 'ไม่มีการจองในช่วงนี้'}</div>
+      <div class="status ${cls}">${status}</div>
+      <div class="detail">${detail}</div>
+      ${next?`<div class="next">📌 ${next}</div>`:''}
     `;
     grid.appendChild(el);
   });
 }
 
+/* ===== THEME ===== */
+const btnTheme=document.getElementById('btnTheme');
+btnTheme.onclick=()=>{
+  const b=document.body;
+  const dark=b.getAttribute('data-theme')==='dark';
+  b.setAttribute('data-theme',dark?'light':'dark');
+  btnTheme.textContent=dark?'🌙 Dark':'☀️ Light';
+};
+
+/* ===== FULLSCREEN ===== */
+document.getElementById('btnFS').onclick=()=>{
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen();
+  }else{
+    document.exitFullscreen();
+  }
+};
+
 /* ===== START ===== */
-updateClock();
-setInterval(updateClock,1000);
 load();
-setInterval(load, REFRESH_SEC*1000);
+setInterval(load,REFRESH_SEC*1000);
 </script>
 
 </body>
