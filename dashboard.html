@@ -6,434 +6,183 @@
 <title>Dashboard แอดมิน - จองห้องประชุม</title>
 <link rel="icon" type="image/png" href="https://namyennn.github.io/room-booking/LOGOCS.png?v=1">
 <style>
-  body{
-    font-family:system-ui,Segoe UI,Arial;
-    padding:16px;
-    max-width:980px;
-    margin:auto;
-    background:#f3f4f6;
-  }
-  .card{
-    background:#ffffff;
-    border-radius:16px;
-    padding:16px 20px 20px;
-    box-shadow:0 10px 25px rgba(15,23,42,0.08);
-    border:1px solid #e5e7eb;
-  }
-  .topbar{
-    display:flex;
-    gap:16px;
-    align-items:center;
-    justify-content:space-between;
-    flex-wrap:wrap;
-    margin-bottom:12px;
-  }
-  .brand{display:flex;align-items:center;gap:12px;}
-  .brand-logo{
-    width:44px;height:44px;border-radius:12px;
-    object-fit:cover;border:1px solid #e5e7eb;background:#fff;
-  }
-  .brand-title{display:flex;flex-direction:column;gap:2px;}
-  .brand-title h1{margin:0;font-size:20px;}
-  .brand-sub{font-size:12px;color:#64748b;}
-
-  fieldset{
-    border:1px solid #ddd;
-    padding:12px;
-    margin:12px 0;
-    border-radius:8px;
-    background:#f9fafb;
-  }
-  label{display:block;margin:6px 0 4px}
-  input,select,button{
-    padding:8px;
-    border:1px solid #ccc;
-    border-radius:8px;
-    font:inherit;
-  }
-  button{cursor:pointer;}
-  .filters{
-    display:grid;
-    grid-template-columns:1fr 1fr 1fr 1fr auto;
-    gap:8px;
-    align-items:end;
-  }
-  @media(max-width:720px){
-    .filters{grid-template-columns:1fr 1fr;}
-  }
-  .hint{font-size:12px;color:#666;margin-top:4px}
-  .ok{color:#0a7}
-  .bad{color:#b00020}
-
-  table{
-    width:100%;
-    border-collapse:collapse;
-    margin-top:12px;
-    background:#fff;
-  }
-  th,td{
-    border:1px solid #eee;
-    padding:8px;
-    text-align:left;
-    font-size:14px;
-  }
-  th{background:#f9f9f9;}
-  button.danger{
-    border-color:#b00020;
-    color:#b00020;
-    background:#fff;
-  }
-  details{font-size:12px;}
-
-  /* ===== Login Modal ===== */
-  .modal{
-    position:fixed; inset:0;
-    display:none;
-    align-items:center; justify-content:center;
-    background:rgba(0,0,0,.55);
-    z-index:9999;
-    padding:16px;
-  }
-  .modal-box{
-    width:min(420px, 96vw);
-    background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius:16px;
-    box-shadow:0 18px 40px rgba(15,23,42,.18);
-    padding:16px;
-  }
-  .modal-head{
-    display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
-    margin-bottom:10px;
-  }
-  .chip{
-    display:inline-flex; align-items:center; gap:8px;
-    padding:6px 10px;
-    border-radius:999px;
-    border:1px solid #e5e7eb;
-    background:#f8fafc;
-    font-size:12px;
-    color:#475569;
-    user-select:none;
-  }
-  .dot{width:8px;height:8px;border-radius:999px;background:#f59e0b;}
-  .dot.ok{background:#10b981;}
-  .dot.bad{background:#ef4444;}
-  .modal-actions{
-    display:flex; gap:8px; margin-top:10px;
-  }
-  .btn{
-    padding:9px 12px;
-    border-radius:10px;
-    border:1px solid #e5e7eb;
-    background:#3b82f6;
-    color:#fff;
-    font-weight:700;
-    cursor:pointer;
-  }
-  .btn.secondary{
-    background:#fff;
-    color:#0f172a;
-  }
+body{
+  font-family:system-ui,Segoe UI,Arial;
+  padding:16px;
+  max-width:980px;
+  margin:auto;
+  background:#f3f4f6;
+}
+.card{
+  background:#ffffff;
+  border-radius:16px;
+  padding:16px 20px 20px;
+  box-shadow:0 10px 25px rgba(15,23,42,0.08);
+  border:1px solid #e5e7eb;
+}
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.brand{display:flex;gap:12px;align-items:center;}
+.brand-logo{width:44px;height:44px;border-radius:12px;}
+.btn{
+  padding:8px 12px;
+  border-radius:10px;
+  border:1px solid #e5e7eb;
+  background:#3b82f6;
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+}
+.btn.secondary{background:#fff;color:#0f172a;}
+.hint{font-size:12px;color:#666;}
+.bad{color:#b00020}
+.ok{color:#0a7}
+.modal{
+  position:fixed; inset:0;
+  display:none;
+  align-items:center; justify-content:center;
+  background:rgba(0,0,0,.55);
+  z-index:9999;
+}
+.modal-box{
+  background:#fff;
+  padding:20px;
+  border-radius:16px;
+  max-width:420px;
+  width:90%;
+}
 </style>
 </head>
 
 <body>
+
 <!-- LOGIN MODAL -->
 <div class="modal" id="loginModal">
   <div class="modal-box">
-    <div class="modal-head">
-      <div>
-        <div style="font-weight:900;font-size:18px;">Admin Login</div>
-        <div class="hint">ใส่ Username / Password ก่อนเข้าใช้งาน Dashboard</div>
-      </div>
-      <div class="chip" id="loginChip"><span class="dot" id="loginDot"></span><span id="loginText">รอเข้าสู่ระบบ</span></div>
+    <h3>Admin Login</h3>
+    <label>Username</label>
+    <input id="admin_user">
+    <label>Password</label>
+    <input id="admin_pass" type="password">
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn" id="btnLogin">Login</button>
     </div>
+    <div id="loginMsg" class="hint"></div>
+  </div>
+</div>
 
-    <div>
-      <label>Username</label>
-      <input id="admin_user" placeholder="เช่น admin" autocomplete="username">
-    </div>
-    <div>
-      <label>Password</label>
-      <input id="admin_pass" type="password" placeholder="••••••••" autocomplete="current-password">
-    </div>
-
-    <div class="modal-actions">
-      <button class="btn" id="btnLogin">เข้าสู่ระบบ</button>
-      <button class="btn secondary" id="btnLogout" title="ล้าง token แล้วให้ login ใหม่">ออกจากระบบ</button>
-    </div>
-
-    <div class="hint" style="margin-top:10px;">
-      * ระบบจะเก็บ token ไว้ในเครื่องนี้เท่านั้น (localStorage)
-    </div>
+<!-- SESSION EXPIRED -->
+<div class="modal" id="expiredModal">
+  <div class="modal-box">
+    <h3>Session หมดอายุ</h3>
+    <p class="hint">กรุณา Login ใหม่</p>
+    <button class="btn" id="btnRelogin">Login ใหม่</button>
   </div>
 </div>
 
 <div class="card">
   <div class="topbar">
     <div class="brand">
-      <img src="https://namyennn.github.io/room-booking/LOGOCS.png?v=1" alt="Logo" class="brand-logo">
-      <div class="brand-title">
-        <h1>Dashboard แอดมิน - จองห้องประชุม</h1>
-        <div class="brand-sub">สำหรับดู / ยกเลิกรายการจองห้องประชุมโดยผู้ดูแลระบบ</div>
+      <img src="https://namyennn.github.io/room-booking/LOGOCS.png?v=1" class="brand-logo">
+      <div>
+        <b>Dashboard Admin</b>
+        <div id="whoami" class="hint">ยังไม่เข้าสู่ระบบ</div>
       </div>
     </div>
-    <div class="hint" id="whoami">
-      สถานะ: <b>ยังไม่เข้าสู่ระบบ</b>
-    </div>
+    <button class="btn secondary" id="btnLogoutTop">Log out</button>
   </div>
 
-  <fieldset class="filters">
-    <div>
-      <label>จากวันที่</label>
-      <input type="date" id="date_from">
-    </div>
-    <div>
-      <label>ถึงวันที่</label>
-      <input type="date" id="date_to">
-    </div>
-    <div>
-      <label>ห้อง (ว่าง = ทั้งหมด)</label>
-      <select id="room"><option value="">(ทั้งหมด)</option></select>
-    </div>
-    <div>
-      <label>ค้นหา (ชื่อ/วัตถุประสงค์)</label>
-      <input id="q" placeholder="พิมพ์เพื่อค้นหา...">
-    </div>
-    <div>
-      <button id="load">โหลดรายการ</button>
-    </div>
-  </fieldset>
-
-  <div id="msg" class="hint"></div>
-  <div id="tablebox"></div>
-
-  <details style="margin-top:14px">
-    <summary>DEBUG</summary>
-    <pre id="debug" style="white-space:pre-wrap"></pre>
-  </details>
+  <div style="margin-top:12px">
+    <button class="btn" id="load">โหลดรายการจอง</button>
+    <div id="msg" class="hint"></div>
+    <div id="tablebox"></div>
+  </div>
 </div>
 
 <script>
-  // ===== ตั้งค่าให้ตรงกับ Apps Script Deployment ล่าสุด =====
-  // ❗ ใส่ URL /exec ของน้ำเย็น (ตัวล่าสุดหลัง Deploy)
-  const API = 'https://script.google.com/macros/s/AKfycbyKKtN_gWMWEW30eCjgfWSfF9m1AWPtYweRoPV7VPkPx21HoyhQO5oGGkbi08VsmcxCIQ/exec';
-  // ================================================
+/* ===== CONFIG ===== */
+const API = 'https://script.google.com/macros/s/AKfycbyKKtN_gWMWEW30eCjgfWSfF9m1AWPtYweRoPV7VPkPx21HoyhQO5oGGkbi08VsmcxCIQ/exec';
 
-  const $ = id => document.getElementById(id);
-  const log = t => { const el=$('debug'); if(el) el.textContent += t+'\n'; };
-  const msg = (t, cls='') => { const el=$('msg'); el.textContent=t; el.className='hint '+cls; };
+const TOKEN_KEY='room_admin_token';
+const USER_KEY='room_admin_user';
+const EXP_KEY='room_admin_token_exp';
 
-  function toDateStr(d){ return d.toISOString().slice(0,10); }
+const $=id=>document.getElementById(id);
+const msg=(t,c='')=>{$('msg').textContent=t;$('msg').className='hint '+c};
 
-  // ===== AUTH (token) =====
-  const TOKEN_KEY = 'room_admin_token';
-  const USER_KEY  = 'room_admin_user';
-
-  function getToken(){ return localStorage.getItem(TOKEN_KEY) || ''; }
-  function setToken(token, user){
-    localStorage.setItem(TOKEN_KEY, token || '');
-    if(user) localStorage.setItem(USER_KEY, user);
+/* ===== AUTH ===== */
+function setToken(token,user,exp){
+  localStorage.setItem(TOKEN_KEY,token);
+  localStorage.setItem(USER_KEY,user);
+  localStorage.setItem(EXP_KEY,exp);
+}
+function clearToken(){
+  localStorage.clear();
+}
+function tokenExpired(){
+  const exp=Number(localStorage.getItem(EXP_KEY)||0);
+  return !exp || Date.now()>exp;
+}
+function requireAuth(){
+  if(tokenExpired()){
+    clearToken();
+    $('expiredModal').style.display='flex';
+    return false;
   }
-  function clearToken(){
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+  return true;
+}
+
+/* ===== LOGIN ===== */
+async function login(){
+  const u=$('admin_user').value;
+  const p=$('admin_pass').value;
+  const r=await fetch(`${API}?action=adminlogin&user=${u}&pass=${p}`).then(r=>r.json());
+  if(r.ok){
+    setToken(r.token,r.user,r.exp);
+    $('loginModal').style.display='none';
+    $('whoami').textContent='เข้าสู่ระบบแล้ว ('+r.user+')';
+    loadTable();
+  }else{
+    $('loginMsg').textContent='รหัสไม่ถูกต้อง';
   }
-  function isAuthed(){ return !!getToken(); }
+}
 
-  function openLogin(){
-    $('loginModal').style.display = 'flex';
-    $('whoami').innerHTML = 'สถานะ: <b style="color:#b00020">ยังไม่เข้าสู่ระบบ</b>';
+/* ===== DATA ===== */
+async function loadTable(){
+  if(!requireAuth()) return;
+  const token=localStorage.getItem(TOKEN_KEY);
+  const r=await fetch(`${API}?action=admin_calendar&date_from=2025-01-01&date_to=2026-12-31&token=${token}`).then(r=>r.json());
+  if(!r.ok){
+    clearToken();
+    $('expiredModal').style.display='flex';
+    return;
   }
-  function closeLogin(){
-    $('loginModal').style.display = 'none';
-    const u = localStorage.getItem(USER_KEY) || 'admin';
-    $('whoami').innerHTML = `สถานะ: <b style="color:#0a7">เข้าสู่ระบบแล้ว</b> (${u})`;
+  $('tablebox').innerHTML='<pre>'+JSON.stringify(r.items,null,2)+'</pre>';
+}
+
+/* ===== EVENTS ===== */
+$('btnLogin').onclick=login;
+$('btnRelogin').onclick=()=>{location.reload()};
+$('btnLogoutTop').onclick=()=>{
+  if(confirm('ออกจากระบบ?')){
+    clearToken();
+    location.reload();
   }
-  function setLoginChip(state, text){
-    const dot = $('loginDot');
-    dot.className = 'dot' + (state==='ok'?' ok':state==='bad'?' bad':'');
-    $('loginText').textContent = text;
-  }
+};
+$('load').onclick=loadTable;
 
-  async function api(path, opt = {}){
-    const url = API + path + (path.includes('?')?'&':'?') + 'v=' + Date.now();
-    log('API: '+url+' method='+(opt.method||'GET'));
-    const res = await fetch(url, {
-      method: opt.method || 'GET',
-      body: opt.body || undefined,
-      mode: 'cors', credentials: 'omit', cache: 'no-store',
-      redirect: 'follow', referrerPolicy: 'no-referrer'
-    });
-    const raw = await res.text().catch(()=> '');
-    log('HTTP: '+res.status+' RAW: '+raw.slice(0,200));
-    if(!res.ok) throw new Error('HTTP '+res.status+' '+raw.slice(0,220));
-    try { return JSON.parse(raw); } catch { throw new Error('BAD JSON: '+raw.slice(0,220)); }
-  }
-
-  // ===== LOGIN: Apps Script ต้องมี action=adminLogin (user/pass) =====
-  async function adminLogin(user, pass){
-    return await api(`?action=adminLogin&user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`);
-  }
-
-  async function loadRooms(){
-    const d = await api('?action=rooms');
-    const sel = $('room');
-    (d.rooms||[]).forEach(r=>{
-      const o=document.createElement('option');
-      o.value=r.room_id; o.textContent=r.room_name||r.room_id;
-      sel.appendChild(o);
-    });
-  }
-
-  // ✅ FIX: ใช้ admin_calendar แทน calendar
-  async function loadTable(){
-    if(!isAuthed()){
-      msg('กรุณาเข้าสู่ระบบแอดมินก่อน', 'bad');
-      openLogin();
-      return;
-    }
-
-    const f = $('date_from').value;
-    const t = $('date_to').value;
-    const room = $('room').value;
-    const q = ($('q').value || '').trim().toLowerCase();
-    const token = getToken();
-
-    msg('กำลังโหลด...', '');
-    try{
-      const d = await api(`?action=admin_calendar&room_id=${encodeURIComponent(room)}&date_from=${encodeURIComponent(f)}&date_to=${encodeURIComponent(t)}&token=${encodeURIComponent(token)}`);
-      let items = d.items || [];
-
-      if(q){
-        items = items.filter(it=>{
-          const hay = `${it.by||''} ${it.purpose||''} ${it.room_id||''} ${it.ref||''}`.toLowerCase();
-          return hay.includes(q);
-        });
-      }
-
-      renderTable(items);
-      msg(`โหลดแล้ว ${items.length} รายการ`, 'ok');
-    }catch(e){
-      const s = String(e||'');
-      if(s.toLowerCase().includes('unauthorized') || s.toLowerCase().includes('token') || s.toLowerCase().includes('login')){
-        clearToken();
-        openLogin();
-        msg('Session หมดอายุ หรือไม่ได้รับอนุญาต — กรุณา login ใหม่', 'bad');
-        return;
-      }
-      msg('❌ โหลดไม่สำเร็จ: '+s, 'bad');
-    }
-  }
-
-  function renderTable(items){
-    let html = '<table><thead><tr>'+
-      '<th>Ref</th><th>ห้อง</th><th>วันที่</th><th>เวลา</th><th>ผู้จอง</th><th>วัตถุประสงค์</th><th>จัดการ</th>'+
-      '</tr></thead><tbody>';
-
-    if(!items.length){
-      html += '<tr><td colspan="7" style="text-align:center;color:#666">ไม่มีรายการ</td></tr>';
-    }else{
-      for(const it of items){
-        html += `<tr>
-          <td>${it.ref}</td>
-          <td>${it.room_id}</td>
-          <td>${it.date}</td>
-          <td>${it.start}-${it.end}</td>
-          <td>${it.by||'-'}</td>
-          <td>${it.purpose||'-'}</td>
-          <td><button class="danger" data-ref="${it.ref}">ยกเลิก (แอดมิน)</button></td>
-        </tr>`;
-      }
-    }
-    html += '</tbody></table>';
-    $('tablebox').innerHTML = html;
-
-    document.querySelectorAll('button.danger').forEach(btn=>{
-      btn.onclick = ()=> cancelAdmin(btn.getAttribute('data-ref'));
-    });
-  }
-
-  async function cancelAdmin(ref){
-    if(!isAuthed()){
-      msg('กรุณาเข้าสู่ระบบแอดมินก่อน', 'bad');
-      openLogin();
-      return;
-    }
-    if(!confirm('ยืนยันยกเลิก Ref: '+ref+' ?')) return;
-
-    msg('กำลังยกเลิก...', '');
-    try{
-      const token = getToken();
-      const form = new URLSearchParams();
-      form.set('payload', JSON.stringify({ action:'cancel_admin', ref, token }));
-
-      const res = await api('', { method:'POST', body: form });
-      if(res.ok){
-        msg('✅ ยกเลิกเรียบร้อย', 'ok');
-        await loadTable();
-      }else{
-        msg('❌ ยกเลิกไม่สำเร็จ: '+(res.reason||res.error||'unknown'), 'bad');
-      }
-    }catch(e){
-      const s = String(e||'');
-      if(s.toLowerCase().includes('unauthorized') || s.toLowerCase().includes('token') || s.toLowerCase().includes('login')){
-        clearToken();
-        openLogin();
-        msg('Session หมดอายุ หรือไม่ได้รับอนุญาต — กรุณา login ใหม่', 'bad');
-        return;
-      }
-      msg('❌ ยกเลิกไม่สำเร็จ: '+s, 'bad');
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', async ()=>{
-    const today = new Date();
-    const twoW  = new Date(); twoW.setDate(today.getDate()+14);
-    $('date_from').value = toDateStr(today);
-    $('date_to').value   = toDateStr(twoW);
-
-    try { await loadRooms(); } catch(e){ msg('โหลดห้องไม่สำเร็จ: '+String(e), 'bad'); }
-
-    $('load').onclick = loadTable;
-
-    $('btnLogin').onclick = async ()=>{
-      const u = $('admin_user').value.trim();
-      const p = $('admin_pass').value;
-
-      if(!u || !p){
-        setLoginChip('bad', 'กรอกให้ครบ');
-        return;
-      }
-
-      try{
-        setLoginChip('', 'กำลังตรวจสอบ...');
-        const r = await adminLogin(u,p);
-        if(r.ok && r.token){
-          setToken(r.token, r.user || u);
-          setLoginChip('ok', 'สำเร็จ');
-          closeLogin();
-          msg('✅ เข้าสู่ระบบแล้ว', 'ok');
-          loadTable();
-        }else{
-          setLoginChip('bad', 'ไม่ถูกต้อง');
-        }
-      }catch(_){
-        setLoginChip('bad', 'login ไม่สำเร็จ');
-      }
-    };
-
-    $('btnLogout').onclick = ()=>{
-      clearToken();
-      setLoginChip('', 'ออกจากระบบแล้ว');
-      openLogin();
-      msg('ออกจากระบบแล้ว', '');
-    };
-
-    if(isAuthed()) closeLogin();
-    else openLogin();
-  });
+/* ===== INIT ===== */
+if(localStorage.getItem(TOKEN_KEY) && !tokenExpired()){
+  $('loginModal').style.display='none';
+  $('whoami').textContent='เข้าสู่ระบบแล้ว';
+}else{
+  $('loginModal').style.display='flex';
+}
 </script>
 </body>
 </html>
