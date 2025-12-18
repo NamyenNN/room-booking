@@ -1,1 +1,465 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Dashboard | ระบบจองห้องประชุม</title>
+<link rel="icon" type="image/png" href="https://namyennn.github.io/room-booking/LOGOCS.png?v=1">
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  /* ============== DESIGN TOKENS ============== */
+  :root {
+    --bg: #f8fafc;
+    --card-bg: #ffffff;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --danger: #ef4444;
+    --accent: #10b981;
+    --border: #e2e8f0;
+    --input-focus: #3b82f633;
+    --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  }
+
+  /* ============== BASE ============== */
+  * { box-sizing: border-box; transition: all 0.2s ease; }
+  body {
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    background-color: var(--bg);
+    color: var(--text-main);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    line-height: 1.6;
+  }
+
+  .container { width: 100%; max-width: 1100px; animation: fadeIn 0.5s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .card {
+    background: var(--card-bg);
+    border-radius: 24px;
+    padding: 30px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+
+  /* ============== TOPBAR ============== */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    gap: 20px;
+  }
+  .brand { display: flex; align-items: center; gap: 15px; }
+  .brand-logo { width: 52px; height: 52px; object-fit: contain; border-radius: 12px; }
+  .brand-title h1 { margin: 0; font-size: 22px; font-weight: 700; color: var(--text-main); }
+  .brand-sub { font-size: 13px; color: var(--text-muted); }
+
+  /* ============== AUTH BADGE ============== */
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg);
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+  .dot.ok { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .dot.bad { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+
+  /* ============== FILTERS ============== */
+  .filters-box {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+    background: var(--bg);
+    padding: 20px;
+    border-radius: 20px;
+    margin-bottom: 25px;
+    align-items: end;
+    border: 1px solid var(--border);
+  }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); }
+  input, select {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    font-size: 14px;
+    background: white;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--input-focus); }
+
+  /* ============== TABLE ============== */
+  #tablebox { overflow-x: auto; margin-top: 10px; border-radius: 12px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; background: white; min-width: 800px; }
+  th { background: #f1f5f9; color: var(--text-muted); font-weight: 600; font-size: 13px; padding: 15px; text-align: left; }
+  td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  tr:hover { background: #f8fafc; }
+
+  /* ============== BUTTONS ============== */
+  .btn {
+    padding: 10px 18px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+  
+  .btn-danger { background: #fff1f2; color: var(--danger); border: 1px solid #fecdd3; }
+  .btn-danger:hover { background: var(--danger); color: white; }
+
+  .btn-secondary { background: white; border: 1px solid var(--border); color: var(--text-main); }
+  .btn-secondary:hover { background: var(--bg); }
+
+  /* ============== MODALS ============== */
+  .modal {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 9999;
+  }
+  .modal-box {
+    background: white; padding: 32px; border-radius: 24px; width: 100%; max-width: 400px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  }
+  .modal-box h2 { margin-top: 0; font-size: 20px; font-weight: 700; }
+
+  .hint { font-size: 13px; color: var(--text-muted); margin: 10px 0; }
+  .ok { color: var(--accent); font-weight: 600; }
+  .bad { color: var(--danger); font-weight: 600; }
+
+  @media(max-width: 768px) {
+    .topbar { flex-direction: column; align-items: flex-start; }
+    .right-actions { width: 100%; display: flex; justify-content: space-between; }
+  }
+</style>
+</head>
+
+<body>
+
+<div class="modal" id="loginModal">
+  <div class="modal-box">
+    <h2>Admin Access</h2>
+    <p class="hint">กรุณาเข้าสู่ระบบเพื่อจัดการการจองห้องประชุม</p>
+    
+    <div style="margin-bottom: 15px;">
+      <label>Username</label>
+      <input id="admin_user" placeholder="Admin username">
+    </div>
+    <div style="margin-bottom: 20px;">
+      <label>Password</label>
+      <input id="admin_pass" type="password" placeholder="••••••••">
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+      <button class="btn btn-primary" id="btnLogin" style="flex: 2;">เข้าสู่ระบบ</button>
+      <button class="btn btn-secondary" id="btnLogout" style="flex: 1;">ล้าง</button>
+    </div>
+    
+    <div id="loginChip" class="status-badge" style="margin-top: 20px; justify-content: center; border-style: dashed;">
+      <span class="dot" id="loginDot"></span>
+      <span id="loginText" style="font-size: 12px;">รอการตรวจสอบ...</span>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="expiredModal">
+  <div class="modal-box" style="text-align: center;">
+    <div style="font-size: 40px; margin-bottom: 10px;">⏳</div>
+    <h2>Session Expired</h2>
+    <p class="hint">เซสชั่นของคุณหมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่อีกครั้ง</p>
+    <div style="display: flex; gap: 10px; margin-top: 20px;">
+      <button class="btn btn-primary" id="btnRelogin" style="flex: 1;">Login ใหม่</button>
+      <button class="btn btn-secondary" id="btnCloseExpired" style="flex: 1;">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="card">
+    
+    <div class="topbar">
+      <div class="brand">
+        <img src="https://namyennn.github.io/room-booking/LOGOCS.png?v=1" alt="Logo" class="brand-logo">
+        <div class="brand-title">
+          <h1>Admin Dashboard</h1>
+          <div class="brand-sub">ระบบบริหารจัดการห้องประชุมส่วนกลาง</div>
+        </div>
+      </div>
+
+      <div class="right-actions">
+        <div class="status-badge" id="whoami-container">
+          <span id="whoami">สถานะ: รอโหลด...</span>
+        </div>
+        <button class="btn btn-secondary" id="btnLogoutTop">
+          <span style="font-size: 16px;">Logout</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="filters-box">
+      <div>
+        <label>📅 จากวันที่</label>
+        <input type="date" id="date_from">
+      </div>
+      <div>
+        <label>📅 ถึงวันที่</label>
+        <input type="date" id="date_to">
+      </div>
+      <div>
+        <label>🏢 เลือกห้อง</label>
+        <select id="room"><option value="">— ทั้งหมด —</option></select>
+      </div>
+      <div>
+        <label>🔍 ค้นหา</label>
+        <input id="q" placeholder="ชื่อผู้จอง / เรื่อง...">
+      </div>
+      <button class="btn btn-primary" id="load" style="height: 42px; width: 100%;">
+        เรียกดูข้อมูล
+      </button>
+    </div>
+
+    <div id="msg" class="hint" style="text-align: right; font-weight: 500;"></div>
+    
+    <div id="tablebox">
+      </div>
+
+    <details style="margin-top: 30px; opacity: 0.5;">
+      <summary style="cursor: pointer; font-size: 12px; color: var(--text-muted);">Developer Debug Logs</summary>
+      <pre id="debug" style="font-size: 11px; background: #f1f5f9; padding: 15px; border-radius: 10px; margin-top: 10px; max-height: 200px; overflow: auto;"></pre>
+    </details>
+  </div>
+</div>
+
+<script>
+  // ✅ ใช้ API และ Logic เดิมทั้งหมด
+  const API = 'https://script.google.com/macros/s/AKfycbyKKtN_gWMWEW30eCjgfWSfF9m1AWPtYweRoPV7VPkPx21HoyhQO5oGGkbi08VsmcxCIQ/exec';
+
+  const $ = id => document.getElementById(id);
+  const log = t => { const el=$('debug'); if(el) el.textContent += t+'\n'; };
+  const msg = (t, cls='') => { 
+    const el=$('msg'); 
+    el.textContent=t; 
+    el.className='hint ' + (cls === 'ok' ? 'ok' : cls === 'bad' ? 'bad' : ''); 
+  };
+
+  function toDateStr(d){ return d.toISOString().slice(0,10); }
+
+  const TOKEN_KEY = 'room_admin_token';
+  const USER_KEY  = 'room_admin_user';
+  const EXP_KEY   = 'room_admin_token_exp';
+  let expiryTimer = null;
+
+  function getToken(){ return localStorage.getItem(TOKEN_KEY) || ''; }
+  function getExp(){ return Number(localStorage.getItem(EXP_KEY) || 0); }
+
+  function setToken(token, user, exp){
+    localStorage.setItem(TOKEN_KEY, token || '');
+    if(user) localStorage.setItem(USER_KEY, user);
+    if(exp) localStorage.setItem(EXP_KEY, String(exp));
+    scheduleAutoLogout();
+    updateAuthUI();
+  }
+  function clearToken(){
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(EXP_KEY);
+    if(expiryTimer){ clearTimeout(expiryTimer); expiryTimer=null; }
+    updateAuthUI();
+  }
+  function isTokenExpired(){
+    const t = getToken();
+    const exp = getExp();
+    if(!t || !exp) return true;
+    return Date.now() >= exp;
+  }
+  function isAuthed(){ return !!getToken() && !isTokenExpired(); }
+
+  function updateAuthUI(){
+    const authed = isAuthed();
+    $('btnLogoutTop').style.display = authed ? 'inline-flex' : 'none';
+    const container = $('whoami-container');
+    if(authed){
+      const u = localStorage.getItem(USER_KEY) || 'admin';
+      container.innerHTML = `<span class="dot ok"></span><span style="color:var(--accent); font-weight:700;">Online: ${u}</span>`;
+    }else{
+      container.innerHTML = `<span class="dot bad"></span><span style="color:var(--danger);">Offline</span>`;
+    }
+  }
+
+  function openLogin(){ $('loginModal').style.display = 'flex'; $('expiredModal').style.display = 'none'; updateAuthUI(); }
+  function closeLogin(){ $('loginModal').style.display = 'none'; updateAuthUI(); }
+
+  function showSessionExpired(reasonText){
+    clearToken();
+    $('expiredModal').style.display = 'flex';
+    if(reasonText) msg(reasonText, 'bad');
+  }
+
+  function scheduleAutoLogout(){
+    if(expiryTimer){ clearTimeout(expiryTimer); expiryTimer=null; }
+    const exp = getExp();
+    if(!exp) return;
+    const msLeft = exp - Date.now();
+    if(msLeft <= 0){ showSessionExpired('หมดเวลาเชื่อมต่อ'); return; }
+    expiryTimer = setTimeout(()=>{ showSessionExpired('หมดเวลาเชื่อมต่อ'); }, msLeft);
+  }
+
+  function setLoginChip(state, text){
+    const dot = $('loginDot');
+    dot.className = 'dot' + (state==='ok'?' ok':state==='bad'?' bad':'');
+    $('loginText').textContent = text;
+  }
+
+  async function api(path, opt = {}){
+    const url = API + path + (path.includes('?')?'&':'?') + 'v=' + Date.now();
+    const res = await fetch(url, {
+      method: opt.method || 'GET',
+      body: opt.body || undefined,
+      mode: 'cors'
+    });
+    const raw = await res.text().catch(()=> '');
+    if(!res.ok) throw new Error('HTTP Error');
+    try { return JSON.parse(raw); } catch { throw new Error('Format Error'); }
+  }
+
+  function looksUnauthorized(d){
+    const s = String((d && (d.error || d.reason || d.message)) || '').toLowerCase();
+    return s.includes('unauthorized') || s.includes('token') || s.includes('login');
+  }
+
+  async function adminLogin(user, pass){
+    return await api(`?action=adminLogin&user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`);
+  }
+
+  async function loadRooms(){
+    const d = await api('?action=rooms');
+    if(!d.ok) return;
+    const sel = $('room');
+    (d.rooms||[]).forEach(r=>{
+      const o=document.createElement('option');
+      o.value=r.room_id; o.textContent=r.room_name||r.room_id;
+      sel.appendChild(o);
+    });
+  }
+
+  async function loadTable(){
+    if(!isAuthed()){ openLogin(); return; }
+    const f = $('date_from').value;
+    const t = $('date_to').value;
+    const room = $('room').value;
+    const q = ($('q').value || '').trim().toLowerCase();
+    const token = getToken();
+
+    msg('⏳ กำลังดึงข้อมูล...', '');
+    try{
+      const d = await api(`?action=admin_calendar&room_id=${encodeURIComponent(room)}&date_from=${encodeURIComponent(f)}&date_to=${encodeURIComponent(t)}&token=${encodeURIComponent(token)}`);
+      if(!d.ok){
+        if(looksUnauthorized(d)){ showSessionExpired(); openLogin(); return; }
+        msg('❌ ล้มเหลว', 'bad'); return;
+      }
+      let items = d.items || [];
+      if(q){
+        items = items.filter(it=>{
+          const hay = `${it.by||''} ${it.purpose||''} ${it.room_id||''} ${it.ref||''}`.toLowerCase();
+          return hay.includes(q);
+        });
+      }
+      renderTable(items);
+      msg(`พบข้อมูล ${items.length} รายการ`, 'ok');
+    }catch(e){ msg('❌ Error', 'bad'); }
+  }
+
+  function renderTable(items){
+    let html = '<table><thead><tr>'+
+      '<th>Ref</th><th>ห้อง</th><th>วันที่</th><th>เวลา</th><th>ผู้จอง</th><th>วัตถุประสงค์</th><th style="text-align:center">จัดการ</th>'+
+      '</tr></thead><tbody>';
+
+    if(!items.length){
+      html += '<tr><td colspan="7" style="text-align:center; padding:40px; color:#94a3b8;">ไม่พบข้อมูลการจองในส่วนนี้</td></tr>';
+    }else{
+      for(const it of items){
+        html += `<tr>
+          <td style="font-family:monospace; font-weight:bold; color:var(--primary)">${it.ref}</td>
+          <td><b>${it.room_id}</b></td>
+          <td>${it.date}</td>
+          <td><span style="color:var(--text-muted)">${it.start} – ${it.end}</span></td>
+          <td>${it.by||'-'}</td>
+          <td>${it.purpose||'-'}</td>
+          <td style="text-align:center"><button class="btn btn-danger" data-ref="${it.ref}">ยกเลิกการจอง</button></td>
+        </tr>`;
+      }
+    }
+    html += '</tbody></table>';
+    $('tablebox').innerHTML = html;
+    document.querySelectorAll('button.btn-danger').forEach(btn=>{
+      btn.onclick = ()=> cancelAdmin(btn.getAttribute('data-ref'));
+    });
+  }
+
+  async function cancelAdmin(ref){
+    if(!isAuthed()){ openLogin(); return; }
+    if(!confirm('🚨 คุณต้องการยกเลิกการจองรหัส ' + ref + ' ใช่หรือไม่?')) return;
+    msg('⏳ กำลังดำเนินการ...', '');
+    try{
+      const token = getToken();
+      const form = new URLSearchParams();
+      form.set('payload', JSON.stringify({ action:'cancel_admin', ref, token }));
+      const res = await api('', { method:'POST', body: form });
+      if(!res.ok){ msg('❌ ล้มเหลว', 'bad'); return; }
+      msg('✅ ยกเลิกสำเร็จ', 'ok');
+      loadTable();
+    }catch(e){ msg('❌ Error', 'bad'); }
+  }
+
+  document.addEventListener('DOMContentLoaded', async ()=>{
+    const today = new Date();
+    const twoW  = new Date(); twoW.setDate(today.getDate()+14);
+    $('date_from').value = toDateStr(today);
+    $('date_to').value   = toDateStr(twoW);
+
+    try { await loadRooms(); } catch(e){}
+
+    $('load').onclick = loadTable;
+    $('btnLogin').onclick = async ()=>{
+      const u = $('admin_user').value.trim();
+      const p = $('admin_pass').value;
+      if(!u || !p){ setLoginChip('bad', 'กรุณากรอกข้อมูล'); return; }
+      try{
+        setLoginChip('', 'ตรวจสอบ...');
+        const r = await adminLogin(u,p);
+        if(r.ok && r.token){
+          setToken(r.token, r.user || u, r.exp);
+          setLoginChip('ok', 'สำเร็จ');
+          setTimeout(closeLogin, 500);
+          loadTable();
+        }else{ setLoginChip('bad', 'ข้อมูลไม่ถูกต้อง'); }
+      }catch(_){ setLoginChip('bad', 'เกิดข้อผิดพลาด'); }
+    };
+
+    $('btnLogoutTop').onclick = ()=>{ if(confirm('ต้องการออกจากระบบ?')){ clearToken(); openLogin(); } };
+    $('btnRelogin').onclick = ()=>{ $('expiredModal').style.display='none'; openLogin(); };
+    $('btnCloseExpired').onclick = ()=>{ $('expiredModal').style.display='none'; openLogin(); };
+
+    updateAuthUI();
+    if(isAuthed()){ scheduleAutoLogout(); closeLogin(); } else { openLogin(); }
+  });
+</script>
+</body>
+</html>
