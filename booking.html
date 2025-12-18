@@ -4,194 +4,206 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>จองห้องประชุม | Booking System</title>
+<title>จองห้องประชุม</title>
 <link rel="icon" type="image/png" href="https://namyennn.github.io/room-booking/LOGOCS.png?v=1">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
 <style>
-  /* ============== DESIGN TOKENS ============== */
-  :root {
-    --bg: #f8fafc;
-    --card-bg: #ffffff;
-    --text-main: #1e293b;
-    --text-muted: #64748b;
-    --primary: #2563eb;
-    --primary-hover: #1d4ed8;
-    --accent: #10b981;
-    --border: #e2e8f0;
-    --input-focus: #3b82f633;
-    --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  /* ============== THEME TOKENS (Light default) ============== */
+  :root{
+    --bg: #f3f4f6;        /* พื้นหลังนอก */
+    --text: #0f172a;
+    --muted:#64748b;
+    --card:#ffffff;       /* การ์ดหลัก */
+    --subcard:#f9fafb;    /* การ์ดด้านใน */
+    --line:#e5e7eb;
+    --border:#e5e7eb;     /* (เติมให้) ใช้กับ dashed border */
+    --primary:#3b82f6;
+    --primary-press:#2563eb;
+    --input-bg:#ffffff;
   }
-
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --text-main: #f1f5f9;
-      --text-muted: #94a3b8;
-      --primary: #60a5fa;
-      --primary-hover: #93c5fd;
-      --border: #334155;
-      --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#020617;
+      --text:#e5e7eb;
+      --muted:#94a3b8;
+      --card:#020617;
+      --subcard:#020617;
+      --line:#1f2937;
+      --border:#1f2937;
+      --primary:#60a5fa;
+      --primary-press:#3b82f6;
+      --input-bg:#020617;
     }
   }
-
-  body.force-light { /* Override class if needed */ }
-  body.force-dark { /* Override class if needed */ }
-
-  /* ============== RESET & BASE ============== */
-  * { box-sizing: border-box; transition: all 0.2s ease; }
-  body {
-    font-family: 'IBM Plex Sans Thai', sans-serif;
-    background-color: var(--bg);
-    color: var(--text-main);
-    margin: 0;
-    padding: 20px;
-    display: flex;
-    justify-content: center;
-    line-height: 1.6;
+  body.force-light{
+    --bg: #f3f4f6;
+    --text: #0f172a;
+    --muted:#64748b;
+    --card:#ffffff;
+    --subcard:#f9fafb;
+    --line:#e5e7eb;
+    --border:#e5e7eb;
+    --primary:#3b82f6;
+    --primary-press:#2563eb;
+    --input-bg:#ffffff;
+  }
+  body.force-dark{
+    --bg:#020617;
+    --text:#e5e7eb;
+    --muted:#94a3b8;
+    --card:#020617;
+    --subcard:#020617;
+    --line:#1f2937;
+    --border:#1f2937;
+    --primary:#60a5fa;
+    --primary-press:#3b82f6;
+    --input-bg:#020617;
   }
 
-  .container {
-    width: 100%;
-    max-width: 800px;
-    animation: fadeIn 0.6s ease-out;
+  /* ============== BASE LAYOUT ============== */
+  html,body{height:100%}
+  body{
+    font-family:system-ui,Segoe UI,Arial;
+    padding:16px;
+    background:var(--bg);
+    color:var(--text);
+    display:flex;
+    justify-content:center;
   }
 
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+  .page{ width:100%; max-width:760px; }
+
+  .page-card{
+    background:var(--card);
+    border-radius:18px;
+    border:1px solid var(--line);
+    padding:18px 16px 20px;
+    box-shadow:0 16px 40px rgba(15,23,42,.12);
   }
 
-  /* ============== PAGE CARD ============== */
-  .main-card {
-    background: var(--card-bg);
-    border-radius: 24px;
-    padding: 32px;
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border);
+  fieldset{
+    border:1px solid var(--line);
+    padding:14px 14px 16px;
+    margin-bottom:14px;
+    border-radius:14px;
+    background:var(--subcard);
+  }
+  fieldset legend{
+    padding:0 6px;
+    font-size:14px;
+    font-weight:600;
+    color:var(--muted);
   }
 
-  /* ============== HEADER ============== */
-  .header-flex {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
+  label{display:block;margin:6px 0 4px;color:var(--muted);font-size:13px}
+  input,select,button,textarea{
+    width:100%;
+    padding:10px;
+    border-radius:12px;
+    border:1px solid var(--line);
+    background:var(--input-bg);
+    color:var(--text);
+    font:inherit;
   }
-  .brand-group { display: flex; align-items: center; gap: 15px; }
-  .brand-group img { width: 56px; height: 56px; object-fit: contain; }
-  .brand-group h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
-  .subtitle { font-size: 13px; color: var(--text-muted); font-weight: 400; }
-
-  /* ============== FORM ELEMENTS ============== */
-  fieldset {
-    border: none;
-    padding: 0;
-    margin: 0 0 25px 0;
-  }
-  legend {
-    font-weight: 600;
-    font-size: 16px;
-    margin-bottom: 12px;
-    color: var(--primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  
-  .form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
+  textarea{resize:vertical}
+  input:focus,select:focus,textarea:focus{
+    outline:none;
+    border-color:var(--primary);
+    box-shadow:0 0 0 4px rgba(59,130,246,.18);
   }
 
-  label {
-    display: block;
-    font-size: 13px;
-    font-weight: 500;
-    margin-bottom: 6px;
-    color: var(--text-muted);
+  header.header-flex{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+  }
+  .brand-group{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .brand-group img{
+    width:52px;height:52px;border-radius:12px;object-fit:contain;border:1px solid var(--line);background:var(--input-bg);
+  }
+  .brand-group h1{
+    margin:0;
+    font-size:22px;
+    font-weight:800;
+    letter-spacing:.2px;
+  }
+  .subtitle{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:2px;
   }
 
-  input, select, textarea {
-    width: 100%;
-    padding: 12px 16px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--text-main);
-    font-size: 15px;
-    font-family: inherit;
+  .form-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
   }
 
-  input:focus, select:focus, textarea:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 4px var(--input-focus);
+  .status-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+    margin-top:10px;
   }
+  .status-card{
+    background:var(--card);
+    padding:12px;
+    border-radius:14px;
+    border:1px solid var(--line);
+    text-align:center;
+  }
+  .status-card h3{
+    margin:0;
+    font-size:13px;
+    color:var(--muted);
+    font-weight:700;
+  }
+  .count{
+    font-size:18px;
+    font-weight:900;
+    margin:6px 0 4px;
+    color:var(--primary);
+  }
+  .list-info{ font-size:11px; color:var(--muted); }
 
-  /* ============== DASHBOARD AREA ============== */
-  .status-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-top: 10px;
+  .btn-submit{
+    width:100%;
+    border:none;
+    background:var(--primary);
+    color:white;
+    font-weight:900;
+    border-radius:14px;
+    padding:12px 14px;
+    cursor:pointer;
   }
-  .status-card {
-    background: var(--bg);
-    padding: 15px;
-    border-radius: 16px;
-    border: 1px solid var(--border);
-    text-align: center;
-  }
-  .status-card h3 { margin: 0; font-size: 13px; color: var(--text-muted); }
-  .status-card .count { font-size: 18px; font-weight: 700; color: var(--primary); margin: 4px 0; }
-  .status-card .list-info { font-size: 11px; opacity: 0.7; }
+  .btn-submit:active{background:var(--primary-press)}
+  .btn-submit[disabled]{opacity:.65;cursor:not-allowed}
 
-  /* ============== BUTTONS ============== */
-  .btn-submit {
-    width: 100%;
-    background: var(--accent);
-    color: white;
-    border: none;
-    padding: 16px;
-    font-size: 17px;
-    font-weight: 600;
-    border-radius: 16px;
-    cursor: pointer;
-    margin-top: 10px;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+  .footer-links{
+    text-align:center;
+    margin-top:10px;
   }
-  .btn-submit:hover { transform: translateY(-2px); filter: brightness(1.1); }
-  .btn-submit:active { transform: translateY(0); }
+  .footer-links a{color:var(--primary);text-decoration:none;font-weight:700}
+  #msg{font-size:13px; min-height:20px; margin:8px 0 2px}
 
-  .footer-links {
-    text-align: center;
-    margin-top: 20px;
-  }
-  .footer-links a {
-    text-decoration: none;
-    color: var(--primary);
-    font-size: 14px;
-    font-weight: 500;
-  }
-
-  /* Mobile Responsive */
-  @media (max-width: 600px) {
-    .form-grid, .status-grid { grid-template-columns: 1fr; }
-    .main-card { padding: 20px; }
+  @media (max-width:640px){
+    .form-grid{grid-template-columns:1fr}
+    .status-grid{grid-template-columns:1fr}
+    header.header-flex{flex-direction:column;align-items:flex-start}
   }
 </style>
 </head>
-<body>
 
-<div class="container">
-  <div class="main-card">
-    
+<body>
+<div class="page">
+  <div class="page-card">
+
     <header class="header-flex">
       <div class="brand-group">
         <img src="https://namyennn.github.io/room-booking/LOGOCS.png?v=1" alt="Logo">
@@ -200,8 +212,8 @@
           <div class="subtitle">Smart Booking System • CS Room</div>
         </div>
       </div>
-      
-      <select id="theme-select" style="width: auto; padding: 5px 10px; border-radius: 20px; font-size: 12px;">
+
+      <select id="theme-select" style="width:auto; padding:6px 10px; border-radius:999px; font-size:12px;">
         <option value="auto">🌓 Auto</option>
         <option value="light">☀️ Light</option>
         <option value="dark">🌙 Dark</option>
@@ -210,7 +222,8 @@
 
     <fieldset>
       <legend>📍 รายละเอียดการจอง</legend>
-      <div style="margin-bottom: 16px;">
+
+      <div style="margin-bottom: 12px;">
         <label>ห้องประชุม</label>
         <select id="room"></select>
       </div>
@@ -220,7 +233,8 @@
           <label>วันที่</label>
           <input type="date" id="date">
         </div>
-        <div class="form-grid" style="gap: 10px;">
+
+        <div class="form-grid" style="gap:10px;">
           <div>
             <label>เริ่ม</label>
             <input type="time" id="start">
@@ -254,19 +268,20 @@
       </div>
     </fieldset>
 
-    <fieldset style="background: var(--bg); padding: 20px; border-radius: 20px; border: 1px dashed var(--border);">
+    <fieldset style="background: var(--bg); padding: 16px; border-radius: 14px; border: 1px dashed var(--border);">
       <legend>👤 ข้อมูลผู้ติดต่อ</legend>
+
       <label>ชื่อผู้จอง (LINE Name)</label>
       <input id="by" placeholder="กำลังโหลดชื่อจาก LINE..." readonly style="background: transparent;">
-      
-      <label style="margin-top: 15px;">วัตถุประสงค์การใช้งาน</label>
+
+      <label style="margin-top: 12px;">วัตถุประสงค์การใช้งาน</label>
       <textarea id="purpose" rows="2" placeholder="ระบุเหตุผลการจอง..."></textarea>
     </fieldset>
 
     <button id="book" class="btn-submit">ยืนยันการจองตอนนี้</button>
-    
+
     <div class="footer-links">
-      <p id="msg" style="font-size: 13px; margin-bottom: 10px; min-height: 20px;"></p>
+      <p id="msg"></p>
       <a href="my.html">📂 ตรวจสอบการจองของฉัน</a>
     </div>
 
@@ -275,9 +290,249 @@
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
-  // ... (ใส่ Logic JavaScript เดิมของคุณทั้งหมดที่นี่) ...
-  // หมายเหตุ: อย่าลืมแก้บรรทัดธีมใน JS ให้ตรงกับ ID 'theme-select' ใหม่ด้วยครับ
-</script>
+/* ===================== CONFIG ===================== */
+// ✅ Web App ตัวใหม่ (ใช้งานได้จริง)
+const API_URL = 'https://script.google.com/macros/s/AKfycbyKKtN_gWMWEW30eCjgfWSfF9m1AWPtYweRoPV7VPkPx21HoyhQO5oGGkbi08VsmcxCIQ/exec';
+// ✅ LIFF ID จากไฟล์น้ำเย็น
+const LIFF_ID  = '2008386695-b1ykgdPk';
+/* ================================================== */
 
+const $ = (id)=>document.getElementById(id);
+
+const state = {
+  lineUserId: '',
+  lineName: ''
+};
+
+function setMsg(t, cls=''){
+  const el = $('msg');
+  el.textContent = t || '';
+  el.className = cls || '';
+}
+
+function applyTheme(v){
+  document.body.classList.remove('force-light','force-dark');
+  if(v==='light') document.body.classList.add('force-light');
+  if(v==='dark') document.body.classList.add('force-dark');
+}
+
+function getTheme(){
+  return localStorage.getItem('theme_select') || 'auto';
+}
+
+function ymd(d=new Date()){
+  return d.toISOString().slice(0,10);
+}
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function hm(d=new Date()){
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+function timeToMin(t){
+  const [h,m] = String(t||'').split(':').map(Number);
+  if(Number.isNaN(h)||Number.isNaN(m)) return NaN;
+  return h*60+m;
+}
+
+async function apiGet(qs){
+  const url = API_URL + qs + (qs.includes('?') ? '&' : '?') + 'v=' + Date.now();
+  const r = await fetch(url, { cache:'no-store' });
+  const text = await r.text();
+  try { return JSON.parse(text); }
+  catch { throw new Error('BAD_JSON: '+text.slice(0,200)); }
+}
+
+async function apiPost(payloadObj){
+  const form = new URLSearchParams();
+  form.set('payload', JSON.stringify(payloadObj));
+  const r = await fetch(API_URL, { method:'POST', body: form });
+  const text = await r.text();
+  try { return JSON.parse(text); }
+  catch { throw new Error('BAD_JSON: '+text.slice(0,200)); }
+}
+
+/* ----------- ROOMS ----------- */
+async function loadRooms(){
+  $('room').innerHTML = '<option value="">⏳ กำลังโหลดห้อง...</option>';
+  const d = await apiGet('?action=rooms');
+  if(!d.ok) throw new Error(d.error || 'rooms_failed');
+
+  const rooms = d.rooms || [];
+  if(!rooms.length){
+    $('room').innerHTML = '<option value="">ไม่มีข้อมูลห้อง</option>';
+    return;
+  }
+  $('room').innerHTML = '<option value="">— เลือกห้อง —</option>';
+  rooms.forEach(r=>{
+    const opt = document.createElement('option');
+    opt.value = r.room_id;
+    opt.textContent = r.room_name ? `${r.room_name}` : r.room_id;
+    $('room').appendChild(opt);
+  });
+}
+
+/* ----------- SLOTS (แสดงตารางเช้า/บ่าย/เย็น) ----------- */
+function renderSlots(booked){
+  const sections = [
+    {key:'morning',  from:6*60,  to:12*60,  c:'c-morning',  l:'l-morning'},
+    {key:'noon',     from:12*60, to:15*60,  c:'c-noon',     l:'l-noon'},
+    {key:'evening',  from:15*60, to:19*60,  c:'c-evening',  l:'l-evening'}
+  ];
+
+  sections.forEach(sec=>{
+    const list = booked.filter(b=>{
+      const s=timeToMin(b.start), e=timeToMin(b.end);
+      return Math.max(s,sec.from) < Math.min(e,sec.to);
+    });
+
+    $(sec.c).textContent = String(list.length);
+
+    if(!list.length){
+      $(sec.l).textContent = 'ว่าง';
+    }else{
+      // โชว์แค่ 3 รายการกันยาว
+      $(sec.l).textContent = list.slice(0,3).map(x=>`${x.start}-${x.end}`).join(', ');
+    }
+  });
+}
+
+async function loadSlots(){
+  const room_id = $('room').value;
+  const date = $('date').value;
+  if(!room_id || !date){
+    renderSlots([]);
+    return;
+  }
+  const d = await apiGet(`?action=slots&room_id=${encodeURIComponent(room_id)}&date=${encodeURIComponent(date)}`);
+  if(!d.ok) throw new Error(d.error || 'slots_failed');
+  renderSlots(d.booked || []);
+}
+
+/* ----------- LIFF ----------- */
+async function initLiff(){
+  try{
+    await liff.init({ liffId: LIFF_ID });
+    if(!liff.isLoggedIn()){
+      $('by').value = 'กรุณาเปิดผ่าน LINE เพื่อ Login';
+      setMsg('ต้องเปิดหน้านี้ผ่าน LINE OA/LIFF เพื่อจอง', 'bad');
+      return;
+    }
+    const profile = await liff.getProfile();
+    state.lineUserId = profile.userId;
+    state.lineName = profile.displayName || '';
+    $('by').value = state.lineName || '(ไม่ทราบชื่อ)';
+    setMsg('');
+  }catch(e){
+    console.error(e);
+    $('by').value = 'เชื่อมต่อ LINE ไม่สำเร็จ';
+    setMsg('LIFF error: เปิดผ่าน LINE OA/LIFF แล้วลองใหม่', 'bad');
+  }
+}
+
+/* ----------- BOOKING ----------- */
+async function onBook(){
+  const room_id = $('room').value;
+  const date = $('date').value;
+  const start = $('start').value;
+  const end = $('end').value;
+  const purpose = ($('purpose').value || '').trim();
+  const book_by = (state.lineName || $('by').value || '').trim();
+  const line_user = state.lineUserId;
+
+  if(!line_user){
+    alert('จองไม่สำเร็จ\n\nต้องเปิดผ่าน LINE OA/LIFF เพื่อดึง userId');
+    return;
+  }
+  if(!room_id || !date || !start || !end){
+    alert('จองไม่สำเร็จ\n\nกรุณาเลือกห้อง/วันที่/เวลา ให้ครบ');
+    return;
+  }
+  const sMin=timeToMin(start), eMin=timeToMin(end);
+  if(Number.isNaN(sMin) || Number.isNaN(eMin) || eMin<=sMin){
+    alert('จองไม่สำเร็จ\n\nเวลาไม่ถูกต้อง (End ต้องมากกว่า Start)');
+    return;
+  }
+
+  $('book').disabled = true;
+  setMsg('กำลังจอง...', '');
+
+  try{
+    const payload = {
+      room_id, date, start, end,
+      book_by, purpose,
+      line_user
+    };
+    const r = await apiPost(payload);
+
+    if(!r.ok){
+      const human =
+        r.error === 'TIME_CONFLICT' ? 'ช่วงเวลานี้ถูกจองแล้ว กรุณาเลือกเวลาอื่น' :
+        r.error === 'NO_LIFF' ? 'ไม่พบ line_user (ต้องเปิดผ่าน LINE)' :
+        (r.message || r.error || 'จองไม่สำเร็จ');
+      setMsg('❌ '+human, 'bad');
+      alert('จองไม่สำเร็จ\n\n'+human);
+      return;
+    }
+
+    setMsg('✅ จองสำเร็จ! Ref: '+(r.ref||''), 'ok');
+    alert(
+      'จองสำเร็จ 🎉\n\n' +
+      `ห้อง: ${room_id}\n` +
+      `วันที่: ${date}\n` +
+      `เวลา: ${start} - ${end}\n` +
+      `Ref: ${r.ref||'-'}`
+    );
+    await loadSlots();
+  }catch(e){
+    console.error(e);
+    setMsg('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ', 'bad');
+    alert('จองไม่สำเร็จ\n\nเกิดข้อผิดพลาดในการเชื่อมต่อ');
+  }finally{
+    $('book').disabled = false;
+  }
+}
+
+/* ----------- INIT ----------- */
+document.addEventListener('DOMContentLoaded', async ()=>{
+  // theme init
+  const t = getTheme();
+  $('theme-select').value = t;
+  applyTheme(t);
+  $('theme-select').addEventListener('change', (e)=>{
+    const v=e.target.value;
+    localStorage.setItem('theme_select', v);
+    applyTheme(v);
+  });
+
+  // defaults
+  $('date').value = ymd();
+  const d = new Date();
+  d.setMinutes(d.getMinutes()+10);
+  $('start').value = hm(d);
+  d.setMinutes(d.getMinutes()+30);
+  $('end').value = hm(d);
+
+  // load rooms & slots
+  try{
+    await loadRooms();
+  }catch(e){
+    console.error(e);
+    $('room').innerHTML = '<option value="">โหลดห้องไม่สำเร็จ</option>';
+    setMsg('โหลดห้องไม่สำเร็จ (เช็ค Apps Script action=rooms)', 'bad');
+  }
+
+  // LIFF
+  await initLiff();
+
+  // events
+  $('room').addEventListener('change', loadSlots);
+  $('date').addEventListener('change', loadSlots);
+  $('book').addEventListener('click', onBook);
+
+  // initial slots (ถ้ายังไม่เลือกห้องจะโชว์ว่าง)
+  await loadSlots();
+});
+</script>
 </body>
 </html>
