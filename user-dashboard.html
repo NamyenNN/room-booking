@@ -1,284 +1,192 @@
 <!doctype html>
 <html lang="th">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard Meeting</title>
-<link rel="icon" type="image/png" href="https://namyennn.github.io/room-booking/LOGOCS.png?v=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>สถานะห้องประชุม (Live)</title>
+
 <style>
   :root{
-    --card:#fff;
-    --muted:#666;
-    --line:#eee;
-    --chip:#f6f6f6;
+    --bg:#020617;
+    --card:#0f172a;
+    --line:#1e293b;
+    --text:#e5e7eb;
+    --muted:#94a3b8;
+    --free:#22c55e;
+    --busy:#ef4444;
+    --soon:#facc15;
   }
+
   body{
+    margin:0;
+    padding:32px;
     font-family:system-ui,Segoe UI,Arial;
-    padding:16px;
-    max-width:1100px;
-    margin:auto;
-    background:#f3f4f6;
+    background:var(--bg);
+    color:var(--text);
   }
 
-  .page-card{
-    background:#ffffff;
-    border-radius:16px;
-    padding:16px 20px 20px;
-    box-shadow:0 10px 25px rgba(15,23,42,0.08);
-    border:1px solid #e5e7eb;
-  }
-
-  .topbar{
+  header{
     display:flex;
-    gap:12px;
-    align-items:center;
     justify-content:space-between;
-    flex-wrap:wrap;
-    margin-bottom:12px;
-  }
-  .brand{
-    display:flex;
     align-items:center;
+    margin-bottom:24px;
+    flex-wrap:wrap;
     gap:12px;
   }
-  .brand-logo{
-    width:44px;
-    height:44px;
-    border-radius:12px;
-    object-fit:cover;
-    border:1px solid #e5e7eb;
-    background:#fff;
-  }
-  .brand-title{
-    display:flex;
-    flex-direction:column;
-    gap:2px;
-  }
+
   h1{
     margin:0;
-    font-size:20px;
-  }
-  .brand-sub{
-    font-size:12px;
-    color:#64748b;
+    font-size:36px;
+    font-weight:900;
+    letter-spacing:.5px;
   }
 
-  .who{font-size:13px;color:#444}
-
-  fieldset{
-    border:1px solid #ddd;
-    padding:12px;
-    margin:12px 0;
-    border-radius:12px;
-    background:#fff;
+  .time{
+    font-size:18px;
+    color:var(--muted);
   }
-  label{display:block;margin:6px 0 4px}
-  input,select,button{
-    padding:8px;
-    border:1px solid #ccc;
-    border-radius:10px;
-    background:#fff;
-    font:inherit;
-  }
-  button{cursor:pointer}
-  .filters{
-    display:grid;
-    grid-template-columns:1fr 1fr auto;
-    gap:8px;
-    align-items:end;
-  }
-  @media(max-width:820px){
-    .filters{
-      grid-template-columns:1fr 1fr;
-    }
-  }
-
-  .hint{font-size:12px;color:var(--muted)}
-  .ok{color:#0a7}
-  .bad{color:#b00020}
-
-  details{margin-top:14px}
-  pre{white-space:pre-wrap}
 
   .grid{
     display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(340px,1fr));
-    gap:12px;
-    margin-top:12px;
+    grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    gap:24px;
   }
-  .card{
+
+  .room{
     background:var(--card);
-    border:1px solid #e9e9e9;
-    border-radius:14px;
-    padding:12px;
-  }
-  .card h3{margin:0 0 6px;font-size:16px}
-
-  .day-block{
-    margin-top:8px;
-    padding-top:6px;
-    border-top:1px dashed #e5e7eb;
-  }
-  .day-title{
-    font-size:13px;
-    font-weight:600;
-    color:#334155;
-    margin-bottom:4px;
-  }
-
-  table{
-    width:100%;
-    border-collapse:collapse;
-    margin-top:6px;
-  }
-  th,td{
+    border-radius:24px;
+    padding:24px;
     border:1px solid var(--line);
-    padding:6px 8px;
-    text-align:left;
-    font-size:13px;
-    vertical-align:top;
-  }
-  th{background:#f9f9f9}
-  .status-badge{
-    padding:1px 8px;
-    border-radius:999px;
-    border:1px solid #ddd;
-    font-size:11px;
-  }
-  .status-wait{border-color:#777;color:#777}
-  .status-ongoing{border-color:#1565c0;color:#1565c0}
-  .status-confirmed{border-color:#0a7;color:#0a7}
-  .status-cancelled{border-color:#b00020;color:#b00020}
-  .empty{
-    color:#777;
-    text-align:center;
-    padding:12px;
-    border:1px dashed #ddd;
-    border-radius:8px;
-    background:#fff;
-  }
-
-  .chip{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    padding:4px 10px;
-    border:1px solid #ddd;
-    border-radius:999px;
-    background:#fff;
-    font-size:12px;
-  }
-  .dot{
-    width:8px;
-    height:8px;
-    border-radius:50%;
-    background:#0a7;
-    box-shadow:0 0 0 0 rgba(10,167,128,.5);
-    animation:pulse 1.6s infinite;
-  }
-  .dot.paused{
-    background:#bbb;
-    box-shadow:none;
-    animation:none;
-  }
-  @keyframes pulse{
-    to{box-shadow:0 0 0 10px rgba(10,167,128,0)}
-  }
-
-  .timeline-wrap{margin-top:4px}
-  .timeline-head{
+    box-shadow:0 20px 40px rgba(0,0,0,.4);
     display:flex;
-    justify-content:space-between;
-    font-size:11px;
-    color:#555;
-    margin:0 2px 4px;
+    flex-direction:column;
+    gap:14px;
   }
-  .timeline{
-    position:relative;
-    height:26px;
-    border:1px solid #e5e5e5;
-    border-radius:8px;
-    background:#fff;
-    overflow:hidden;
+
+  .room h2{
+    margin:0;
+    font-size:28px;
+    font-weight:800;
   }
-  .tick{
-    position:absolute;
-    top:0;
-    bottom:0;
-    width:1px;
-    background:#f0f0f0;
+
+  .status{
+    font-size:26px;
+    font-weight:900;
   }
-  .slot{
-    position:absolute;
-    top:2px;
-    bottom:2px;
-    border-radius:6px;
-    border:1px solid #cfe3ff;
-    background:#eaf3ff;
-    font-size:11px;
-    line-height:22px;
-    padding:0 6px;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
+  .free{color:var(--free);}
+  .busy{color:var(--busy);}
+  .soon{color:var(--soon);}
+
+  .detail{
+    font-size:18px;
+    color:var(--muted);
+    line-height:1.5;
   }
-  .slot.ongoing{
-    border-color:#bcdcff;
-    background:#e3f0ff;
-    box-shadow:0 0 0 1px rgba(21,101,192,.08) inset;
-  }
-  .timeline-legend{
-    font-size:11px;
-    color:#666;
-    margin-top:2px;
+
+  footer{
+    margin-top:24px;
+    font-size:14px;
+    color:var(--muted);
+    text-align:right;
   }
 </style>
 </head>
+
 <body>
-<div class="page-card">
-  <div class="topbar">
-    <div class="brand">
-      <img src="https://namyennn.github.io/room-booking/LOGOCS.png?v=1" alt="Logo" class="brand-logo">
-      <div class="brand-title">
-        <h1>แดชบอร์ดการจองห้อง</h1>
-        <div class="brand-sub">มุมมองรายวัน (ภายใน 2 วันจากวันที่เลือก)</div>
-      </div>
-    </div>
-    <div class="who" id="who">
-      <span class="chip">
-        <span class="dot" id="liveDot"></span>
-        <span id="liveText">Live</span>
-      </span>
-      <span class="hint" id="stamp" style="margin-left:8px"></span>
-    </div>
-  </div>
 
-  <fieldset class="filters">
-    <div>
-      <label>วันที่เริ่มต้น</label>
-      <input type="date" id="date">
-      <div class="hint">จะแสดงถึงอีก 2 วันถัดไป (รวม 3 วัน)</div>
-    </div>
-    <div>
-      <label>ห้อง (ว่าง = แสดงทุกห้อง)</label>
-      <select id="room"><option value="">(ทุกห้อง)</option></select>
-    </div>
-    <div>
-      <label>&nbsp;</label>
-      <button id="load">โหลดข้อมูล</button>
-    </div>
-  </fieldset>
+<header>
+  <h1>📺 สถานะห้องประชุม</h1>
+  <div class="time" id="clock">--:--</div>
+</header>
 
-  <div id="msg" class="hint"></div>
-  <div id="dashboard"></div>
+<div id="grid" class="grid"></div>
 
-  <details><summary>DEBUG</summary><pre id="debug"></pre></details>
-</div>
+<footer id="updated">กำลังโหลดข้อมูล…</footer>
 
 <script>
-  // ===== CONFIG =====
-  const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
-  const POLL_SEC = 7;
-  // ==================
+/* ================= CONFIG ================= */
+const API = 'https://script.google.com/macros/s/AKfycbyKKtN_gWMWEW30eCjgfWSfF9m1AWPtYweRoPV7VPkPx21HoyhQO5oGGkbi08VsmcxCIQ/exec';
+const REFRESH_SEC = 10;   // อัปเดตทุกกี่วินาที
+const SOON_MIN = 15;      // กี่นาทีก่อนเริ่ม = ขึ้น "กำลังจะเริ่ม"
+/* ========================================= */
 
-  let allRooms = [];
-  let allItems =
+function nowMinutes(){
+  const d=new Date();
+  return d.getHours()*60 + d.getMinutes();
+}
+
+function updateClock(){
+  const d=new Date();
+  document.getElementById('clock').textContent =
+    d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+async function load(){
+  const today = new Date().toISOString().slice(0,10);
+  const res = await fetch(`${API}?action=calendar&date_from=${today}&date_to=${today}&v=${Date.now()}`);
+  const data = await res.json();
+  render(data.items || []);
+  document.getElementById('updated').textContent =
+    'อัปเดตล่าสุด ' + new Date().toLocaleTimeString();
+}
+
+function render(items){
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+
+  if(!items.length){
+    grid.innerHTML = '<div style="color:#94a3b8;font-size:22px">ไม่มีรายการจองวันนี้</div>';
+    return;
+  }
+
+  const byRoom = {};
+  items.forEach(it=>{
+    if(!byRoom[it.room_id]) byRoom[it.room_id]=[];
+    byRoom[it.room_id].push(it);
+  });
+
+  const now = nowMinutes();
+
+  Object.keys(byRoom).forEach(room=>{
+    const bookings = byRoom[room];
+    let cls='free', text='ว่าง', detail='';
+
+    for(const b of bookings){
+      const [sh,sm] = b.start.split(':').map(Number);
+      const [eh,em] = b.end.split(':').map(Number);
+      const s = sh*60+sm;
+      const e = eh*60+em;
+
+      if(now>=s && now<e){
+        cls='busy';
+        text='🔴 กำลังใช้งาน';
+        detail=`${b.start} – ${b.end}<br>${b.by||''}`;
+        break;
+      }
+      if(now<s && s-now<=SOON_MIN){
+        cls='soon';
+        text=`🟡 เริ่มใน ${s-now} นาที`;
+        detail=`${b.start} – ${b.end}<br>${b.by||''}`;
+      }
+    }
+
+    const el=document.createElement('div');
+    el.className='room';
+    el.innerHTML=`
+      <h2>${room}</h2>
+      <div class="status ${cls}">${text}</div>
+      <div class="detail">${detail || 'ไม่มีการจองในช่วงนี้'}</div>
+    `;
+    grid.appendChild(el);
+  });
+}
+
+/* ===== START ===== */
+updateClock();
+setInterval(updateClock,1000);
+load();
+setInterval(load, REFRESH_SEC*1000);
+</script>
+
+</body>
+</html>
