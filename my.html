@@ -3,293 +3,164 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>การจองของฉัน / ยกเลิก | ระบบจองห้องประชุม</title>
+<title>การจองของฉัน / ยกเลิก</title>
 <link rel="icon" type="image/png" href="https://namyennn.github.io/room-booking/LOGOCS.png?v=1">
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-  /* ============== DESIGN TOKENS ============== */
   :root {
-    --bg: #f8fafc;
-    --card-bg: #ffffff;
-    --text-main: #1e293b;
-    --text-muted: #64748b;
-    --primary: #2563eb;
-    --danger: #ef4444;
-    --border: #e2e8f0;
-    --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --muted: #64748b;
+    --primary: #2563eb; --danger: #ef4444; --border: #e2e8f0;
   }
-
-  /* ============== BASE ============== */
-  * { box-sizing: border-box; transition: all 0.2s ease; }
-  body {
-    font-family: 'IBM Plex Sans Thai', sans-serif;
-    background-color: var(--bg);
-    color: var(--text-main);
-    margin: 0;
-    padding: 20px;
-    display: flex;
-    justify-content: center;
-    line-height: 1.6;
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --muted: #94a3b8; --border: #334155; }
   }
-
-  .container { width: 100%; max-width: 600px; animation: fadeIn 0.5s ease-out; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-  .main-card {
-    background: var(--card-bg);
-    border-radius: 24px;
-    padding: 25px;
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border);
-  }
-
-  /* ============== TOPBAR ============== */
-  .topbar {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin-bottom: 25px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--border);
-  }
-  .brand-logo { width: 48px; height: 48px; border-radius: 12px; }
-  .brand-title h1 { margin: 0; font-size: 20px; font-weight: 700; color: var(--text-main); }
-  .brand-sub { font-size: 13px; color: var(--text-muted); }
-
-  /* ============== LIST & CARDS ============== */
-  .card-booking {
-    position: relative;
-    background: #ffffff;
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 20px;
-    margin-bottom: 15px;
-    overflow: hidden;
-  }
-  .card-booking:hover { border-color: var(--primary); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1); }
+  * { box-sizing: border-box; font-family: 'IBM Plex Sans Thai', sans-serif; }
+  body { background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
+  .container { width: 100%; max-width: 500px; }
+  .main-card { background: var(--card); border-radius: 24px; padding: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid var(--border); }
   
-  .ref-tag {
-    position: absolute;
-    top: 0;
-    right: 0;
-    background: #f1f5f9;
-    padding: 4px 12px;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--primary);
-    border-bottom-left-radius: 12px;
-    text-transform: uppercase;
-  }
+  .topbar { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
+  .topbar img { width: 45px; height: 45px; border-radius: 10px; }
+  h1 { font-size: 18px; margin: 0; }
 
-  .room-name { font-size: 18px; font-weight: 700; color: var(--primary); margin-bottom: 10px; }
+  .card-booking { background: var(--bg); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 15px; position: relative; }
+  .ref-tag { position: absolute; top: 0; right: 0; background: var(--primary); color: white; padding: 3px 10px; font-size: 10px; border-bottom-left-radius: 12px; font-weight: bold; }
+  .room-name { font-size: 17px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+  .info-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px; }
+  .info-label { color: var(--muted); font-size: 12px; }
   
-  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-  .info-item { font-size: 14px; color: var(--text-main); }
-  .info-label { display: block; font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+  .purpose-box { background: var(--card); padding: 10px; border-radius: 10px; font-size: 13px; margin: 10px 0; border: 1px solid var(--border); color: var(--muted); }
 
-  .purpose-box {
-    background: #f8fafc;
-    padding: 10px 14px;
-    border-radius: 12px;
-    font-size: 14px;
-    margin-bottom: 15px;
-    border-left: 3px solid #cbd5e1;
-  }
-
-  /* ============== BUTTONS ============== */
   button.danger {
-    width: 100%;
-    padding: 12px;
-    background: #fff1f2;
-    color: var(--danger);
-    border: 1px solid #fecdd3;
-    border-radius: 14px;
-    font-family: inherit;
-    font-weight: 600;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+    width: 100%; padding: 12px; background: #fff1f2; color: var(--danger);
+    border: 1px solid #fecdd3; border-radius: 12px; font-weight: 600; cursor: pointer;
   }
-  button.danger:hover { background: var(--danger); color: white; border-color: var(--danger); }
+  button.danger:active { background: var(--danger); color: white; }
 
-  /* ============== OTHERS ============== */
-  .hint { font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 20px; }
-  #msg { margin-top: 15px; text-align: center; font-weight: 500; font-size: 14px; }
-  
-  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
-  .empty-state-icon { font-size: 48px; margin-bottom: 10px; display: block; opacity: 0.5; }
-
-  details { margin-top: 30px; opacity: 0.4; font-size: 11px; }
-  pre { white-space: pre-wrap; background: #eee; padding: 10px; border-radius: 8px; }
+  .empty-state { text-align: center; padding: 50px 20px; color: var(--muted); }
+  #msg { text-align: center; font-size: 14px; margin-top: 15px; min-height: 20px; }
+  .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 </style>
-
-<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
 
 <div class="container">
   <div class="main-card">
-    
     <div class="topbar">
-      <img src="https://namyennn.github.io/room-booking/LOGOCS.png?v=1" alt="Logo" class="brand-logo">
-      <div class="brand-title">
-        <h1>การจองของฉัน / ยกเลิก</h1>
-        <div class="brand-sub">ระบบจัดการสถานะการจองผ่าน LINE</div>
+      <img src="https://namyennn.github.io/room-booking/LOGOCS.png?v=1" alt="Logo">
+      <div>
+        <h1>การจองของฉัน</h1>
+        <div style="font-size: 12px; color: var(--muted);" id="user-display">กำลังยืนยันตัวตน LINE...</div>
       </div>
     </div>
 
-    <p class="hint">ตรวจสอบสถานะการจองปัจจุบันของคุณได้ที่นี่</p>
-
     <div id="list">
       <div class="empty-state">
-        <span class="empty-state-icon">⏳</span>
-        กำลังโหลดรายการจองของคุณ...
+        <div class="loader"></div>
+        กำลังโหลดข้อมูล...
       </div>
     </div>
 
     <p id="msg"></p>
 
-    <div style="text-align: center; margin-top: 10px;">
-        <a href="booking.html" style="text-decoration: none; font-size: 14px; color: var(--primary); font-weight: 500;">← กลับหน้าจองห้องประชุม</a>
+    <div style="text-align: center; margin-top: 15px;">
+      <a href="booking.html" style="color: var(--primary); text-decoration: none; font-size: 14px; font-weight: 600;">← กลับหน้าหลัก</a>
     </div>
-
-    <details>
-      <summary>DEBUG CONSOLE</summary>
-      <pre id="debug"></pre>
-    </details>
   </div>
 </div>
 
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
-  // ===== ตั้งค่าเดิม (API และ LIFF_ID เดิมของคุณ) =====
+  // แก้ไขตรงนี้: ใช้ API URL ตัวเดิมที่ใช้งานได้
   const API = 'https://script.google.com/macros/s/AKfycbyuudinVzhjxa3Qd_i_xZc1dQIe9AJ04dL2Ahg5x4bx94cRkadWcJ8pFihXAgEfDNekOg/exec';
   const LIFF_ID = '2008386695-b1ykgdPk';
 
   let lineUserId = '';
   const $ = id => document.getElementById(id);
-  const log = t => { const el=$('debug'); if(el) el.textContent += t+'\n'; };
 
-  async function api(path, opt={}){
-    const url = API + path + (path.includes('?')?'&':'?') + 'v=' + Date.now();
-    const res = await fetch(url, {
-      method: opt.method || 'GET',
-      body: opt.body || undefined,
-      mode: 'cors'
-    });
-    const raw = await res.text().catch(()=> '');
-    if(!res.ok) throw new Error('Network response was not ok');
-    try { return JSON.parse(raw); } catch { throw new Error('Invalid JSON response'); }
+  // ฟังก์ชันดึงข้อมูลจาก API
+  async function fetchMyBookings() {
+    try {
+      const res = await fetch(`${API}?action=my_bookings&line_user=${lineUserId}&v=${Date.now()}`);
+      const data = await res.json();
+      renderList(data.items || []);
+    } catch (e) {
+      $('list').innerHTML = '<div class="empty-state">❌ ไม่สามารถดึงข้อมูลได้</div>';
+    }
   }
 
-  async function initLIFFRequire(){
+  // ฟังก์ชันแสดงรายการการจอง
+  function renderList(items) {
+    const box = $('list');
+    if (items.length === 0) {
+      box.innerHTML = '<div class="empty-state">📅 ไม่พบรายการจองของคุณ</div>';
+      return;
+    }
+    box.innerHTML = '';
+    items.forEach(it => {
+      box.innerHTML += `
+        <div class="card-booking">
+          <div class="ref-tag">REF: ${it.ref}</div>
+          <div class="room-name">🏢 ${it.room_id}</div>
+          <div class="info-row">
+            <span class="info-label">วันที่:</span>
+            <span><b>${it.date}</b></span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">เวลา:</span>
+            <span><b>${it.start} - ${it.end}</b></span>
+          </div>
+          <div class="purpose-box">${it.purpose || 'ไม่มีระบุวัตถุประสงค์'}</div>
+          <button class="danger" onclick="cancelBooking('${it.ref}')">🗑️ ยกเลิกการจอง</button>
+        </div>
+      `;
+    });
+  }
+
+  // ฟังก์ชันยกเลิกการจอง
+  async function cancelBooking(ref) {
+    if (!confirm(`ยืนยันการยกเลิกหมายเลข ${ref}?`)) return;
+    
+    $('msg').innerHTML = '⏳ กำลังดำเนินการ...';
+    try {
+      const form = new URLSearchParams();
+      form.set('payload', JSON.stringify({ action: 'cancel', ref: ref, line_user: lineUserId }));
+      const res = await fetch(API, { method: 'POST', body: form });
+      const result = await res.json();
+      
+      if (result.ok) {
+        $('msg').innerHTML = '<span style="color:var(--primary)">✅ ยกเลิกสำเร็จ</span>';
+        fetchMyBookings();
+      } else {
+        $('msg').innerHTML = `<span style="color:var(--danger)">❌ ${result.reason || 'ผิดพลาด'}</span>`;
+      }
+    } catch (e) {
+      $('msg').innerHTML = '❌ เชื่อมต่อผิดพลาด';
+    }
+  }
+
+  // ฟังก์ชันเริ่มต้น LIFF
+  async function main() {
     try {
       await liff.init({ liffId: LIFF_ID });
-      if(!liff.isLoggedIn()){
-        liff.login({ redirectUri: location.href });
-        return;
+      
+      // ถ้าไม่ได้เปิดจากใน LINE (หรือยังไม่ได้ Login) ให้ Login ทันที
+      if (!liff.isLoggedIn()) {
+        liff.login();
+      } else {
+        const profile = await liff.getProfile();
+        lineUserId = profile.userId;
+        $('user-display').textContent = `ผู้ใช้งาน: ${profile.displayName}`;
+        fetchMyBookings(); // เริ่มโหลดข้อมูลทันทีหลังจากรู้ ID
       }
-      const p = await liff.getProfile();
-      lineUserId = p.userId || '';
     } catch (err) {
-      log('LIFF Error: ' + err);
-      $('msg').textContent = '⚠️ ไม่สามารถโหลดโปรไฟล์ LINE ได้';
+      $('list').innerHTML = '<div class="empty-state">⚠️ LIFF Error: กรุณาเปิดจาก LINE</div>';
     }
   }
 
-  async function loadMy(){
-    const box = $('list');
-    try{
-      const d = await api(`?action=my_bookings&line_user=${encodeURIComponent(lineUserId)}`);
-      const items = (d && d.items) || [];
-      
-      if(items.length===0){
-        box.innerHTML=`
-          <div class="empty-state">
-            <span class="empty-state-icon">📂</span>
-            ยังไม่มีรายการจองที่ใช้งานอยู่
-          </div>`;
-        return;
-      }
-
-      box.innerHTML='';
-      items.forEach(it=>{
-        const div = document.createElement('div');
-        div.className='card-booking';
-        div.innerHTML = `
-          <div class="ref-tag">Ref: ${it.ref}</div>
-          <div class="room-name">🏢 ${it.room_id}</div>
-          
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">วันที่</span>
-              <b>📅 ${it.date}</b>
-            </div>
-            <div class="info-item">
-              <span class="info-label">เวลา</span>
-              <b>⏰ ${it.start} - ${it.end}</b>
-            </div>
-          </div>
-          
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">ผู้จอง</span>
-              ${it.by||'-'}
-            </div>
-          </div>
-
-          <div class="info-label">วัตถุประสงค์</div>
-          <div class="purpose-box">${it.purpose||'-'}</div>
-
-          <button class="danger" data-ref="${it.ref}">
-            <span>🗑️ ยกเลิกการจองนี้</span>
-          </button>
-        `;
-        box.appendChild(div);
-      });
-
-      box.querySelectorAll('button.danger').forEach(btn=>{
-        btn.onclick = ()=> cancelRef(btn.getAttribute('data-ref'));
-      });
-    }catch(e){
-      $('msg').innerHTML = '<span style="color:var(--danger)">❌ โหลดรายการไม่สำเร็จ กรุณาลองใหม่</span>';
-      log('Load Error: ' + e);
-    }
-  }
-
-  async function cancelRef(ref){
-    if(!ref) return;
-    if(!confirm('🚨 ยืนยันว่าต้องการยกเลิกการจองรหัส ' + ref + ' ใช่หรือไม่?')) return;
-    
-    const msgEl = $('msg');
-    msgEl.innerHTML = '<span style="color:var(--primary)">⏳ กำลังยกเลิก...</span>';
-    
-    try{
-      const form = new URLSearchParams();
-      form.set('payload', JSON.stringify({ action:'cancel', ref, line_user: lineUserId }));
-      const res = await api('', { method:'POST', body: form });
-      
-      if(res.ok){
-        msgEl.innerHTML = '<span style="color:var(--primary)">✅ ยกเลิกการจองเรียบร้อยแล้ว</span>';
-        await loadMy(); 
-      }else{
-        msgEl.innerHTML = '<span style="color:var(--danger)">❌ ' + (res.reason || 'เกิดข้อผิดพลาด') + '</span>';
-      }
-    }catch(e){
-      msgEl.innerHTML = '<span style="color:var(--danger)">❌ เกิดข้อผิดพลาดในการเชื่อมต่อ</span>';
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', async ()=>{
-    await initLIFFRequire();
-    if(lineUserId) await loadMy();
-  });
+  main();
 </script>
 </body>
 </html>
